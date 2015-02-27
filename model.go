@@ -91,43 +91,60 @@ func (m *Model) Learn(text string) {
 func (m *Model) Reply(text string) string {
 	start, end := m.ends()
 
-	toks := strings.Fields(text)
+	pivot := m.pickPivot(strings.Fields(text))
 
-	pivot := toks[m.rand.Intn(len(toks))]
-	pid := m.tokens.ID(pivot)
-
-	// find a random context containing pid
-	fwdtoks := m.fwd.Follow(pid)
+	// find a random context containing pivot
+	fwdtoks := m.fwd.Follow(pivot)
 	if len(fwdtoks) == 0 {
-		// not yet.
-		log.Fatal("don't know how to babble!")
+		for _, id := range m.tokens.ids {
+			// rely on Go map iteration to pick a random id
+			pivot = id
+			break
+		}
 	}
 
-	fwdctx := bigram{tok0: pid, tok1: m.choice(fwdtoks)}
+	fwdctx := bigram{tok0: pivot, tok1: m.choice(fwdtoks)}
 	revctx := bigram{tok0: fwdctx.tok1, tok1: fwdctx.tok0}
 
 	fwd := m.follow(m.fwd, fwdctx, end)
 	rev := m.follow(m.rev, revctx, start)
 
-	if revctx.tok0 == end {
-		// join() usually strips the sentence end token from
-		// the end of the fwd chain, but rev will have an
-		// extra if it came from the pivot context.
-		rev = rev[1:]
+	return m.join(rev, fwd[2:])
+}
+
+func (m *Model) pickPivot(words []string) token {
+	var pivots []token
+	for _, w := range words {
+		if tok, ok := m.tokens.ids[w]; ok {
+			pivots = append(pivots, tok)
+		}
 	}
 
-	return m.join(rev, fwd[2:])
+	if len(pivots) > 0 {
+		return pivots[m.rand.Intn(len(pivots))]
+	}
+
+	// No valid pivots, so babble.
+	start, _ := m.ends()
+	return start
 }
 
 func (m *Model) join(rev, fwd []token) string {
 	var words = make([]string, 0, len(rev)+len(fwd))
 
+	start, end := m.ends()
+	add := func(tok token) {
+		if tok != start && tok != end {
+			words = append(words, m.tokens.words[tok])
+		}
+	}
+
 	for i := len(rev) - 1; i >= 0; i-- {
-		words = append(words, m.tokens.words[rev[i]])
+		add(rev[i])
 	}
 
 	for _, tok := range fwd {
-		words = append(words, m.tokens.words[tok])
+		add(tok)
 	}
 
 	return strings.Join(words, " ")
@@ -136,10 +153,13 @@ func (m *Model) join(rev, fwd []token) string {
 func (m *Model) follow(obs *obs, pos bigram, end token) []token {
 	ret := []token{pos.tok0, pos.tok1}
 
+	if pos.tok1 == end {
+		return ret
+	}
+
 	for {
 		toks := obs.FollowBigram(pos)
 		if len(toks) == 0 {
-			// not yet.
 			log.Fatal("ran out of chain")
 		}
 

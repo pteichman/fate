@@ -15,6 +15,26 @@ func TestReply(t *testing.T) {
 	}
 }
 
+func TestBabble(t *testing.T) {
+	model := NewModel()
+
+	text := "this is a test"
+
+	model.Learn(text)
+
+	for i := 0; i < 1000; i++ {
+		reply := model.Reply("unknown")
+
+		if reply != text {
+			t.Errorf("Reply(this is a test) => %s, want %s", reply, text)
+		}
+
+		if _, ok := model.tokens.ids["unknown"]; ok {
+			t.Errorf("Reply(\"unknown\") registered token")
+		}
+	}
+}
+
 func TestDuel(t *testing.T) {
 	model := NewModel()
 
