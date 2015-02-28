@@ -29,7 +29,7 @@ func TestBabble(t *testing.T) {
 			t.Errorf("Reply(this is a test) => %s, want %s", reply, text)
 		}
 
-		if _, ok := model.tokens.ids["unknown"]; ok {
+		if _, ok := model.tokens.CheckID("unknown"); ok {
 			t.Errorf("Reply(\"unknown\") registered token")
 		}
 	}

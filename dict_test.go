@@ -30,7 +30,7 @@ func TestDict(t *testing.T) {
 	}
 }
 
-func TestSyn(t *testing.T) {
+func TestSyndict(t *testing.T) {
 	var tests = []struct {
 		strs     []string
 		query    string
@@ -40,18 +40,13 @@ func TestSyn(t *testing.T) {
 	}
 
 	for ti, tt := range tests {
-		d := newDict()
-		s := &syn{
-			make(map[string]tokset),
-			strings.ToLower,
-		}
+		d := newSyndict(strings.ToLower)
 
 		for _, str := range tt.strs {
-			tok := d.ID(str)
-			s.Add(str, tok)
+			d.ID(str)
 		}
 
-		res := s.Get(tt.query)
+		res := d.Syns(tt.query)
 		if !reflect.DeepEqual(res, tt.expected) {
 			t.Errorf("[%d] Get(%q) => %d, want %d", ti, tt.query, res, tt.expected)
 		}

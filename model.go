@@ -18,7 +18,7 @@ type bigram struct {
 // Model is a trigram language model that can learn and respond to
 // text.
 type Model struct {
-	tokens *dict
+	tokens *syndict
 
 	// We track (tok0 -> tok1) and (tok0 tok1 -> tok2) in
 	// the forward direction, so we can efficiently choose
@@ -36,7 +36,7 @@ type Model struct {
 // NewModel constructs an empty language model.
 func NewModel() *Model {
 	return &Model{
-		tokens: newDict(),
+		tokens: newSyndict(strings.ToLower),
 
 		fwd1: make(obs1),
 		fwd2: make(obs2),
@@ -107,9 +107,7 @@ func (m *Model) Reply(text string) string {
 func (m *Model) pickPivot(words []string) token {
 	var pivots []token
 	for _, w := range words {
-		if tok, ok := m.tokens.ids[w]; ok {
-			pivots = append(pivots, tok)
-		}
+		pivots = append(pivots, m.tokens.Syns(w)...)
 	}
 
 	if len(pivots) > 0 {
@@ -127,7 +125,7 @@ func (m *Model) join(rev, fwd []token) string {
 	start, end := m.ends()
 	add := func(tok token) {
 		if tok != start && tok != end {
-			words = append(words, m.tokens.words[tok])
+			words = append(words, m.tokens.Word(tok))
 		}
 	}
 

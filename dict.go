@@ -10,8 +10,9 @@ func newDict() *dict {
 	return &dict{ids: make(map[string]token)}
 }
 
-func (d *dict) Len() int {
-	return len(d.words)
+func (d *dict) CheckID(w string) (token, bool) {
+	tok, ok := d.ids[w]
+	return tok, ok
 }
 
 func (d *dict) ID(w string) token {
@@ -25,19 +26,48 @@ func (d *dict) ID(w string) token {
 	return id
 }
 
-// syn maintains lists of token synonyms.
-type syn struct {
-	// Index by token id.
+func (d *dict) Word(tok token) string {
+	return d.words[tok]
+}
+
+// syndict maintains lists of token synonyms.
+type syndict struct {
+	d *dict
+
 	syns map[string]tokset
 	key  func(string) string
 }
 
-func (s *syn) Add(word string, tok token) {
-	key := s.key(word)
-	s.syns[key] = s.syns[key].Add(tok)
+func (s *syndict) CheckID(word string) (token, bool) {
+	tok, ok := s.d.CheckID(word)
+	return tok, ok
 }
 
-func (s *syn) Get(word string) tokset {
+func (s *syndict) ID(word string) token {
+	if tok, ok := s.d.CheckID(word); ok {
+		return tok
+	}
+
+	tok := s.d.ID(word)
+	key := s.key(word)
+	s.syns[key] = s.syns[key].Add(tok)
+
+	return tok
+}
+
+func (s *syndict) Syns(word string) tokset {
 	key := s.key(word)
 	return s.syns[key]
+}
+
+func (s *syndict) Word(tok token) string {
+	return s.d.Word(tok)
+}
+
+func newSyndict(key func(string) string) *syndict {
+	return &syndict{
+		d:    newDict(),
+		syns: make(map[string]tokset),
+		key:  key,
+	}
 }
