@@ -2,7 +2,6 @@ package fate
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -40,7 +39,7 @@ func TestSyndict(t *testing.T) {
 	}
 
 	for ti, tt := range tests {
-		d := newSyndict(strings.ToLower)
+		d := newSyndict(DefaultStemmer)
 
 		for _, str := range tt.strs {
 			d.ID(str)

@@ -7,10 +7,6 @@ import (
 	"log"
 	"math/rand"
 	"strings"
-	"unicode"
-
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
 )
 
 type token uint32
@@ -37,10 +33,26 @@ type Model struct {
 	rand *rand.Rand
 }
 
+// Config holds Model configuration data. An empty Config struct
+// indicates the default values for each.
+type Config struct {
+	// Stemmer makes all tokens go through a normalization process
+	// when created. Words that stem the same mean the same thing.
+	Stemmer Stemmer
+}
+
+func (c Config) stemmerOrDefault() Stemmer {
+	if c.Stemmer != nil {
+		return c.Stemmer
+	}
+
+	return DefaultStemmer
+}
+
 // NewModel constructs an empty language model.
-func NewModel() *Model {
+func NewModel(opts Config) *Model {
 	return &Model{
-		tokens: newSyndict(normalizer()),
+		tokens: newSyndict(opts.stemmerOrDefault()),
 
 		fwd1: make(obs1),
 		fwd2: make(obs2),
@@ -48,20 +60,6 @@ func NewModel() *Model {
 		rev2: make(obs2),
 
 		rand: rand.New(randSource()),
-	}
-}
-
-// normalize a word by removing all punctuation and lowercasing.
-func normalizer() func(string) string {
-	isRemovable := func(r rune) bool {
-		return unicode.Is(unicode.Mn, r) || unicode.IsPunct(r)
-	}
-
-	trans := transform.Chain(norm.NFD, transform.RemoveFunc(isRemovable), norm.NFC)
-
-	return func(word string) string {
-		str, _, _ := transform.String(trans, word)
-		return strings.ToLower(str)
 	}
 }
 

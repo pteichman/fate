@@ -14,7 +14,7 @@ import (
 func main() {
 	flag.Parse()
 
-	model := fate.NewModel()
+	model := fate.NewModel(fate.Config{})
 
 	var learned bool
 	for _, f := range flag.Args() {

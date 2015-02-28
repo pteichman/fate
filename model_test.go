@@ -7,7 +7,7 @@ import (
 )
 
 func TestReply(t *testing.T) {
-	model := NewModel()
+	model := NewModel(Config{})
 
 	text := "this is a test"
 
@@ -20,7 +20,7 @@ func TestReply(t *testing.T) {
 }
 
 func TestBabble(t *testing.T) {
-	model := NewModel()
+	model := NewModel(Config{})
 
 	text := "this is a test"
 
@@ -40,7 +40,7 @@ func TestBabble(t *testing.T) {
 }
 
 func TestDuel(t *testing.T) {
-	model := NewModel()
+	model := NewModel(Config{})
 
 	model.Learn("this is a test")
 	model.Learn("this is another test")
