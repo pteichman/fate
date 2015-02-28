@@ -20,8 +20,15 @@ type bigram struct {
 type Model struct {
 	tokens *dict
 
-	fwd *obs
-	rev *obs
+	// We track (tok0 -> tok1) and (tok0 tok1 -> tok2) in
+	// the forward direction, so we can efficiently choose
+	// random tok0-containing contexts.
+	fwd1 obs1
+	fwd2 obs2
+
+	// In the reverse direction, we only need to be able
+	// to track (tok2 tok1 -> tok0).
+	rev2 obs2
 
 	rand *rand.Rand
 }
@@ -31,20 +38,10 @@ func NewModel() *Model {
 	return &Model{
 		tokens: newDict(),
 
-		// We track (tok0 -> tok1) and (tok0 tok1 -> tok2) in
-		// the forward direction, so we can efficiently choose
-		// random tok0-containing contexts.
-		fwd: &obs{
-			grams:   make(map[token][]token),
-			bigrams: make(map[bigram]tokset),
-		},
+		fwd1: make(obs1),
+		fwd2: make(obs2),
 
-		// In the reverse direction, we only need to be able
-		// to track (tok2 tok1 -> tok0), so grams is not
-		// allocated.
-		rev: &obs{
-			bigrams: make(map[bigram]tokset),
-		},
+		rev2: make(obs2),
 
 		rand: rand.New(randSource()),
 	}
@@ -79,10 +76,12 @@ func (m *Model) Learn(text string) {
 
 	for i := 0; i < len(ids)-2; i++ {
 		ctx.tok0, ctx.tok1, tok2 = ids[i], ids[i+1], ids[i+2]
-		m.fwd.Observe(ctx, tok2)
+		if !m.fwd2.Observe(ctx, tok2) {
+			m.fwd1.Observe(ctx.tok0, ctx.tok1)
+		}
 
 		ctx.tok0, tok2 = tok2, ctx.tok0
-		m.rev.Observe(ctx, tok2)
+		m.rev2.Observe(ctx, tok2)
 	}
 }
 
@@ -94,20 +93,13 @@ func (m *Model) Reply(text string) string {
 	pivot := m.pickPivot(strings.Fields(text))
 
 	// find a random context containing pivot
-	fwdtoks := m.fwd.Follow(pivot)
-	if len(fwdtoks) == 0 {
-		for _, id := range m.tokens.ids {
-			// rely on Go map iteration to pick a random id
-			pivot = id
-			break
-		}
-	}
+	fwdtoks := m.fwd1[pivot]
 
 	fwdctx := bigram{tok0: pivot, tok1: m.choice(fwdtoks)}
 	revctx := bigram{tok0: fwdctx.tok1, tok1: fwdctx.tok0}
 
-	fwd := m.follow(m.fwd, fwdctx, end)
-	rev := m.follow(m.rev, revctx, start)
+	fwd := m.follow(m.fwd2, fwdctx, end)
+	rev := m.follow(m.rev2, revctx, start)
 
 	return m.join(rev, fwd[2:])
 }
@@ -150,7 +142,7 @@ func (m *Model) join(rev, fwd []token) string {
 	return strings.Join(words, " ")
 }
 
-func (m *Model) follow(obs *obs, pos bigram, end token) []token {
+func (m *Model) follow(obs obs2, pos bigram, end token) []token {
 	ret := []token{pos.tok0, pos.tok1}
 
 	if pos.tok1 == end {
@@ -158,7 +150,7 @@ func (m *Model) follow(obs *obs, pos bigram, end token) []token {
 	}
 
 	for {
-		toks := obs.FollowBigram(pos)
+		toks := obs[pos]
 		if len(toks) == 0 {
 			log.Fatal("ran out of chain")
 		}

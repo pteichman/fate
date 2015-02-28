@@ -1,25 +1,15 @@
 package fate
 
-type obs struct {
-	grams   map[token][]token
-	bigrams map[bigram]tokset
+type obs1 map[token][]token
+
+func (o obs1) Observe(tok0 token, tok1 token) {
+	o[tok0] = append(o[tok0], tok1)
 }
 
-func (o *obs) Observe(ctx bigram, tok2 token) {
-	grams, bigrams := o.grams, o.bigrams
+type obs2 map[bigram]tokset
 
-	set, ok := bigrams[ctx]
-	if !ok && grams != nil {
-		grams[ctx.tok0] = append(grams[ctx.tok0], ctx.tok1)
-	}
-
-	bigrams[ctx] = set.Add(tok2)
-}
-
-func (o *obs) Follow(tok token) []token {
-	return o.grams[tok]
-}
-
-func (o *obs) FollowBigram(ctx bigram) []token {
-	return o.bigrams[ctx]
+func (o obs2) Observe(ctx bigram, tok2 token) bool {
+	set, ok := o[ctx]
+	o[ctx] = set.Add(tok2)
+	return ok
 }
