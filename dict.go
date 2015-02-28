@@ -24,3 +24,20 @@ func (d *dict) ID(w string) token {
 	d.ids[w] = id
 	return id
 }
+
+// syn maintains lists of token synonyms.
+type syn struct {
+	// Index by token id.
+	syns map[string]tokset
+	key  func(string) string
+}
+
+func (s *syn) Add(word string, tok token) {
+	key := s.key(word)
+	s.syns[key] = s.syns[key].Add(tok)
+}
+
+func (s *syn) Get(word string) tokset {
+	key := s.key(word)
+	return s.syns[key]
+}
