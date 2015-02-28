@@ -82,9 +82,15 @@ func (m *Model) Learn(text string) {
 	start, end := m.ends()
 	tokens := m.tokens
 
+	words := strings.Fields(text)
+	if len(words) == 1 {
+		// Refuse to learn single-word inputs.
+		return
+	}
+
 	// ids: <S> <S> tokens in the input string </S> </S>
 	var ids = []token{start, start}
-	for _, f := range strings.Fields(text) {
+	for _, f := range words {
 		ids = append(ids, tokens.ID(f))
 	}
 	ids = append(ids, end, end)
