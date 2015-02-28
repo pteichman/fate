@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"unicode"
 )
 
 type token uint32
@@ -36,7 +37,7 @@ type Model struct {
 // NewModel constructs an empty language model.
 func NewModel() *Model {
 	return &Model{
-		tokens: newSyndict(strings.ToLower),
+		tokens: newSyndict(normalize),
 
 		fwd1: make(obs1),
 		fwd2: make(obs2),
@@ -45,6 +46,18 @@ func NewModel() *Model {
 
 		rand: rand.New(randSource()),
 	}
+}
+
+// normalize a word by removing all punctuation and lowercasing.
+func normalize(word string) string {
+	runes := make([]rune, 0, len(word))
+	for _, r := range word {
+		if !unicode.IsPunct(r) {
+			runes = append(runes, unicode.ToLower(r))
+		}
+	}
+
+	return string(runes)
 }
 
 // randSource seeds a standard math/rand PRNG with a secure seed.
