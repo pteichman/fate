@@ -1,6 +1,10 @@
 package fate
 
-import "testing"
+import (
+	"bufio"
+	"os"
+	"testing"
+)
 
 func TestReply(t *testing.T) {
 	model := NewModel()
@@ -48,4 +52,19 @@ func TestDuel(t *testing.T) {
 			t.Errorf("Reply(this is a test) => %s, want %s", reply, "this is (a|another) test")
 		}
 	}
+}
+
+func learnFile(m *Model, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	s := bufio.NewScanner(file)
+	for s.Scan() {
+		m.Learn(s.Text())
+	}
+
+	return s.Err()
 }
