@@ -14,17 +14,22 @@ import (
 func main() {
 	flag.Parse()
 
-	if flag.NArg() == 0 {
-		fmt.Println("Usage: fate-console [ <text file> ... ]")
-		os.Exit(1)
-	}
-
 	model := fate.NewModel()
+
+	var learned bool
 	for _, f := range flag.Args() {
 		err := learnFile(model, f)
 		if err != nil {
 			fmt.Printf("Error: %s\n", err)
+			continue
 		}
+
+		learned = true
+	}
+
+	if !learned {
+		fmt.Println("Usage: fate-console <text files>")
+		os.Exit(1)
 	}
 
 	chat(model)
