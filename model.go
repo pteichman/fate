@@ -8,6 +8,9 @@ import (
 	"math/rand"
 	"strings"
 	"unicode"
+
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 type token uint32
@@ -37,7 +40,7 @@ type Model struct {
 // NewModel constructs an empty language model.
 func NewModel() *Model {
 	return &Model{
-		tokens: newSyndict(normalize),
+		tokens: newSyndict(normalizer()),
 
 		fwd1: make(obs1),
 		fwd2: make(obs2),
@@ -49,15 +52,17 @@ func NewModel() *Model {
 }
 
 // normalize a word by removing all punctuation and lowercasing.
-func normalize(word string) string {
-	runes := make([]rune, 0, len(word))
-	for _, r := range word {
-		if !unicode.IsPunct(r) {
-			runes = append(runes, unicode.ToLower(r))
-		}
+func normalizer() func(string) string {
+	isRemovable := func(r rune) bool {
+		return unicode.Is(unicode.Mn, r) || unicode.IsPunct(r)
 	}
 
-	return string(runes)
+	trans := transform.Chain(norm.NFD, transform.RemoveFunc(isRemovable), norm.NFC)
+
+	return func(word string) string {
+		str, _, _ := transform.String(trans, word)
+		return strings.ToLower(str)
+	}
 }
 
 // randSource seeds a standard math/rand PRNG with a secure seed.
