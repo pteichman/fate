@@ -49,8 +49,11 @@ func (s *syndict) ID(word string) token {
 	}
 
 	tok := s.d.ID(word)
+
 	key := s.key(word)
-	s.syns[key] = s.syns[key].Add(tok)
+	if key != "" {
+		s.syns[key] = s.syns[key].Add(tok)
+	}
 
 	return tok
 }
