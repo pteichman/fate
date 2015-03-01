@@ -43,6 +43,7 @@ type Config struct {
 	// Stemmer makes all tokens go through a normalization process
 	// when created. Words that stem the same mean the same thing.
 	Stemmer Stemmer
+	Rand    rand.Source
 }
 
 func (c Config) stemmerOrDefault() Stemmer {
@@ -51,6 +52,16 @@ func (c Config) stemmerOrDefault() Stemmer {
 	}
 
 	return DefaultStemmer
+}
+
+func (c Config) randOrDefault() rand.Source {
+	if c.Rand != nil {
+		return c.Rand
+	}
+
+	var seed int64
+	binary.Read(cryptorand.Reader, binary.LittleEndian, &seed)
+	return rand.NewSource(seed)
 }
 
 // NewModel constructs an empty language model.
@@ -63,15 +74,8 @@ func NewModel(opts Config) *Model {
 
 		rev2: make(obs2),
 
-		rand: rand.New(randSource()),
+		rand: rand.New(opts.randOrDefault()),
 	}
-}
-
-// randSource seeds a standard math/rand PRNG with a secure seed.
-func randSource() rand.Source {
-	var seed int64
-	binary.Read(cryptorand.Reader, binary.LittleEndian, &seed)
-	return rand.NewSource(seed)
 }
 
 func (m *Model) ends() (token, token) {
