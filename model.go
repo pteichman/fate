@@ -15,6 +15,10 @@ type bigram struct {
 	tok0, tok1 token
 }
 
+func (b bigram) reverse() bigram {
+	return bigram{b.tok1, b.tok0}
+}
+
 // Model is a trigram language model that can learn and respond to
 // text.
 type Model struct {
@@ -110,20 +114,17 @@ func (m *Model) Learn(text string) {
 // Reply generates a reply string to str, given the current state of
 // the language model.
 func (m *Model) Reply(text string) string {
-	start, end := m.ends()
-
 	pivot := m.pickPivot(strings.Fields(text))
 
-	// find a random context containing pivot
-	fwdtoks := m.fwd1[pivot]
+	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot])}
 
-	fwdctx := bigram{tok0: pivot, tok1: m.choice(fwdtoks)}
-	revctx := bigram{tok0: fwdctx.tok1, tok1: fwdctx.tok0}
-
+	start, end := m.ends()
 	fwd := m.follow(m.fwd2, fwdctx, end)
-	rev := m.follow(m.rev2, revctx, start)
+	rev := m.follow(m.rev2, fwdctx.reverse(), start)
 
-	return m.join(rev, fwd[2:])
+	rev, fwd = cleanup(rev, fwd)
+
+	return join(m.tokens, rev, fwd)
 }
 
 func (m *Model) pickPivot(words []string) token {
@@ -141,33 +142,15 @@ func (m *Model) pickPivot(words []string) token {
 	return start
 }
 
-func (m *Model) join(rev, fwd []token) string {
-	var words = make([]string, 0, len(rev)+len(fwd))
-
-	start, end := m.ends()
-	add := func(tok token) {
-		if tok != start && tok != end {
-			words = append(words, m.tokens.Word(tok))
+func (m *Model) follow(obs obs2, pos bigram, goal token) []token {
+	if pos.tok1 == goal {
+		if pos.tok0 == goal {
+			return nil
 		}
+		return []token{pos.tok0}
 	}
 
-	for i := len(rev) - 1; i >= 0; i-- {
-		add(rev[i])
-	}
-
-	for _, tok := range fwd {
-		add(tok)
-	}
-
-	return strings.Join(words, " ")
-}
-
-func (m *Model) follow(obs obs2, pos bigram, end token) []token {
 	ret := []token{pos.tok0, pos.tok1}
-
-	if pos.tok1 == end {
-		return ret
-	}
 
 	for {
 		toks := obs[pos]
@@ -176,13 +159,66 @@ func (m *Model) follow(obs obs2, pos bigram, end token) []token {
 		}
 
 		tok := m.choice(toks)
-		if tok == end {
+		if tok == goal {
 			return ret
 		}
 
 		ret = append(ret, tok)
 		pos.tok0, pos.tok1 = pos.tok1, tok
 	}
+}
+
+func cleanup(rev, fwd []token) ([]token, []token) {
+	// Clean up some artifacts of choosing start/end as a pivot.
+	// TODO: don't do this
+	if len(rev) == 1 {
+		return nil, fwd[1:]
+	} else if len(fwd) == 1 {
+		return rev[1:], nil
+	}
+
+	return rev, fwd[2:]
+}
+
+func join(tokens *syndict, rev, fwd []token) string {
+	buf := make([]byte, 0, joinsize(tokens, rev, fwd))
+
+	reverse(rev)
+
+	for _, tok := range rev {
+		buf = append(buf, tokens.Word(tok)...)
+		buf = append(buf, ' ')
+	}
+
+	for _, tok := range fwd {
+		buf = append(buf, tokens.Word(tok)...)
+		buf = append(buf, ' ')
+	}
+
+	return string(buf[:len(buf)-1])
+}
+
+func reverse(toks []token) {
+	a, b := 0, len(toks)-1
+	for a < b {
+		toks[a], toks[b] = toks[b], toks[a]
+		a++
+		b--
+	}
+}
+
+func joinsize(tokens *syndict, rev, fwd []token) int {
+	// initialize count assuming a space between each word
+	count := len(rev) + len(fwd)
+	for _, tok := range rev {
+		count += len(tokens.Word(tok))
+	}
+
+	for _, tok := range fwd {
+		count += len(tokens.Word(tok))
+	}
+
+	return count
 }
 
 func (m *Model) choice(toks []token) token {
