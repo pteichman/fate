@@ -119,16 +119,27 @@ func (m *Model) Reply(text string) string {
 
 	start, end := m.ends()
 
-	path := make([]token, 0)
+	var path []token
+
+	// Compute the beginning of the sentence by walking from
+	// fwdctx back to start.
 	path = m.follow(path, m.rev2, fwdctx.reverse(), start)
 
+	// Reverse what we have so far.
 	reverse(path)
+
+	// Append the initial context, tok0 and tok1. But tok0 only if
+	// we weren't already at the start.
 	if fwdctx.tok0 != start {
 		path = append(path, fwdctx.tok0)
 	}
 
+	// And tok1 only if we weren't already at the end.
 	if fwdctx.tok1 != end {
 		path = append(path, fwdctx.tok1)
+
+		// Compute the end of the sentence by walking forward
+		// from fwdctx to end.
 		path = m.follow(path, m.fwd2, fwdctx, end)
 	}
 
