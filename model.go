@@ -115,16 +115,24 @@ func (m *Model) Learn(text string) {
 // the language model.
 func (m *Model) Reply(text string) string {
 	pivot := m.pickPivot(strings.Fields(text))
-
 	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot])}
 
 	start, end := m.ends()
-	fwd := m.follow(m.fwd2, fwdctx, end)
-	rev := m.follow(m.rev2, fwdctx.reverse(), start)
 
-	rev, fwd = cleanup(rev, fwd)
+	path := make([]token, 0)
+	path = m.follow(path, m.rev2, fwdctx.reverse(), start)
 
-	return join(m.tokens, rev, fwd)
+	reverse(path)
+	if fwdctx.tok0 != start {
+		path = append(path, fwdctx.tok0)
+	}
+
+	if fwdctx.tok1 != end {
+		path = append(path, fwdctx.tok1)
+		path = m.follow(path, m.fwd2, fwdctx, end)
+	}
+
+	return join(m.tokens, path)
 }
 
 func (m *Model) pickPivot(words []string) token {
@@ -137,60 +145,31 @@ func (m *Model) pickPivot(words []string) token {
 		return pivots[m.rand.Intn(len(pivots))]
 	}
 
-	// No valid pivots, so babble.
-	start, _ := m.ends()
-	return start
+	// No valid pivots, so babble. Assume tokens 0 & 1 are start and end.
+	return token(m.rand.Intn(m.tokens.Len()-2) + 2)
 }
 
-func (m *Model) follow(obs obs2, pos bigram, goal token) []token {
-	if pos.tok1 == goal {
-		if pos.tok0 == goal {
-			return nil
-		}
-		return []token{pos.tok0}
-	}
-
-	ret := []token{pos.tok0, pos.tok1}
-
+func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
 	for {
 		toks := obs[pos]
 		if len(toks) == 0 {
-			log.Fatal("ran out of chain")
+			log.Fatal("ran out of chain at", pos)
 		}
 
 		tok := m.choice(toks)
 		if tok == goal {
-			return ret
+			return path
 		}
 
-		ret = append(ret, tok)
+		path = append(path, tok)
 		pos.tok0, pos.tok1 = pos.tok1, tok
 	}
 }
 
-func cleanup(rev, fwd []token) ([]token, []token) {
-	// Clean up some artifacts of choosing start/end as a pivot.
-	// TODO: don't do this
-	if len(rev) == 1 {
-		return nil, fwd[1:]
-	} else if len(fwd) == 1 {
-		return rev[1:], nil
-	}
+func join(tokens *syndict, path []token) string {
+	buf := make([]byte, 0, joinsize(tokens, path))
 
-	return rev, fwd[2:]
-}
-
-func join(tokens *syndict, rev, fwd []token) string {
-	buf := make([]byte, 0, joinsize(tokens, rev, fwd))
-
-	reverse(rev)
-
-	for _, tok := range rev {
-		buf = append(buf, tokens.Word(tok)...)
-		buf = append(buf, ' ')
-	}
-
-	for _, tok := range fwd {
+	for _, tok := range path {
 		buf = append(buf, tokens.Word(tok)...)
 		buf = append(buf, ' ')
 	}
@@ -207,14 +186,10 @@ func reverse(toks []token) {
 	}
 }
 
-func joinsize(tokens *syndict, rev, fwd []token) int {
+func joinsize(tokens *syndict, path []token) int {
 	// initialize count assuming a space between each word
-	count := len(rev) + len(fwd)
-	for _, tok := range rev {
-		count += len(tokens.Word(tok))
-	}
-
-	for _, tok := range fwd {
+	count := len(path)
+	for _, tok := range path {
 		count += len(tokens.Word(tok))
 	}
 

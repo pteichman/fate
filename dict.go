@@ -58,6 +58,10 @@ func (s *syndict) ID(word string) token {
 	return tok
 }
 
+func (s *syndict) Len() int {
+	return len(s.d.words)
+}
+
 func (s *syndict) Syns(word string) tokset {
 	key := s.stemmer.Stem(word)
 	return s.syns[key]
