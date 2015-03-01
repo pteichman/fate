@@ -180,12 +180,13 @@ func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
 func join(tokens *syndict, path []token) string {
 	buf := make([]byte, 0, joinsize(tokens, path))
 
-	for _, tok := range path {
-		buf = append(buf, tokens.Word(tok)...)
+	buf = append(buf, tokens.Word(path[0])...)
+	for _, tok := range path[1:] {
 		buf = append(buf, ' ')
+		buf = append(buf, tokens.Word(tok)...)
 	}
 
-	return string(buf[:len(buf)-1])
+	return string(buf)
 }
 
 func reverse(toks []token) {
@@ -199,7 +200,7 @@ func reverse(toks []token) {
 
 func joinsize(tokens *syndict, path []token) int {
 	// initialize count assuming a space between each word
-	count := len(path)
+	count := len(path) - 1
 	for _, tok := range path {
 		count += len(tokens.Word(tok))
 	}
