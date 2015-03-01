@@ -85,28 +85,22 @@ func (m *Model) ends() (token, token) {
 // Learn observes the text in a string and makes it available for
 // later replies.
 func (m *Model) Learn(text string) {
-	start, end := m.ends()
-	tokens := m.tokens
-
 	words := strings.Fields(text)
 	if len(words) == 1 {
 		// Refuse to learn single-word inputs.
 		return
 	}
 
-	// ids: <S> <S> tokens in the input string </S> </S>
-	var ids = []token{start, start}
-	for _, f := range words {
-		ids = append(ids, tokens.ID(f))
-	}
-	ids = append(ids, end, end)
+	ids := m.sentence(m.tokens, words)
 
 	var ctx bigram
 	var tok2 token
 
 	for i := 0; i < len(ids)-2; i++ {
+		// Observe the trigram: (tok0, tok1, tok2).
 		ctx.tok0, ctx.tok1, tok2 = ids[i], ids[i+1], ids[i+2]
 		if !m.fwd2.Observe(ctx, tok2) {
+			// And if ctx was new, observe the bigram (tok0, tok1).
 			m.fwd1.Observe(ctx.tok0, ctx.tok1)
 		}
 
@@ -115,10 +109,28 @@ func (m *Model) Learn(text string) {
 	}
 }
 
+func (m *Model) sentence(dict *syndict, words []string) []token {
+	start, end := m.ends()
+
+	// ids: <S> <S> tokens in the input string </S> </S>
+	var ids = []token{start, start}
+	for _, f := range words {
+		ids = append(ids, dict.ID(f))
+	}
+
+	return append(ids, end, end)
+}
+
 // Reply generates a reply string to str, given the current state of
 // the language model.
 func (m *Model) Reply(text string) string {
-	pivot := m.pickPivot(strings.Fields(text))
+	tokens := m.conflate(strings.Fields(text))
+	return join(m.tokens, m.replyTokens(tokens))
+}
+
+func (m *Model) replyTokens(tokens []token) []token {
+	pivot := m.pickPivot(tokens)
+
 	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot])}
 
 	start, end := m.ends()
@@ -147,17 +159,21 @@ func (m *Model) Reply(text string) string {
 		path = m.follow(path, m.fwd2, fwdctx, end)
 	}
 
-	return join(m.tokens, path)
+	return path
 }
 
-func (m *Model) pickPivot(words []string) token {
+func (m *Model) conflate(words []string) []token {
 	var pivots []token
 	for _, w := range words {
 		pivots = append(pivots, m.tokens.Syns(w)...)
 	}
 
-	if len(pivots) > 0 {
-		return pivots[m.rand.Intn(len(pivots))]
+	return pivots
+}
+
+func (m *Model) pickPivot(tokens []token) token {
+	if len(tokens) > 0 {
+		return tokens[m.rand.Intn(len(tokens))]
 	}
 
 	// No valid pivots, so babble. Assume tokens 0 & 1 are start and end.
@@ -182,6 +198,10 @@ func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
 }
 
 func join(tokens *syndict, path []token) string {
+	if len(path) == 0 {
+		return ""
+	}
+
 	buf := make([]byte, 0, joinsize(tokens, path))
 
 	buf = append(buf, tokens.Word(path[0])...)

@@ -81,3 +81,16 @@ func BenchmarkReply(b *testing.B) {
 		m.Reply("apprehend")
 	}
 }
+
+func BenchmarkReplyTokens(b *testing.B) {
+	m := NewModel(Config{})
+
+	m.Learn("On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question.")
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		m.replyTokens([]token{10})
+	}
+}
