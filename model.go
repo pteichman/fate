@@ -93,19 +93,21 @@ func (m *Model) Learn(text string) {
 
 	ids := m.sentence(m.tokens, words)
 
-	var ctx bigram
-	var tok2 token
+	var ctx = bigram{ids[0], ids[1]}
 
-	for i := 0; i < len(ids)-2; i++ {
+	for _, tok2 := range ids[2:] {
 		// Observe the trigram: (tok0, tok1, tok2).
-		ctx.tok0, ctx.tok1, tok2 = ids[i], ids[i+1], ids[i+2]
 		if !m.fwd2.Observe(ctx, tok2) {
 			// And if ctx was new, observe the bigram (tok0, tok1).
 			m.fwd1.Observe(ctx.tok0, ctx.tok1)
 		}
 
+		// "one two" "three" -> "three two" "one"
 		ctx.tok0, tok2 = tok2, ctx.tok0
 		m.rev2.Observe(ctx, tok2)
+
+		// "two three" "four"
+		ctx.tok0, ctx.tok1 = ctx.tok1, ctx.tok0
 	}
 }
 
