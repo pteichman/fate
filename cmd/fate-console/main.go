@@ -41,7 +41,7 @@ func learnFile(m *fate.Model, path string) error {
 		return err
 	}
 
-	s := bufio.NewScanner(bufio.NewReader(f))
+	s := bufio.NewScanner(f)
 	for s.Scan() {
 		m.Learn(s.Text())
 	}
