@@ -10,6 +10,10 @@ type obs2 map[bigram]tokset
 
 func (o obs2) Observe(ctx bigram, tok2 token) bool {
 	set, ok := o[ctx]
-	o[ctx] = set.Add(tok2)
+
+	if newset, added := set.Add(tok2); added {
+		o[ctx] = newset
+	}
+
 	return ok
 }

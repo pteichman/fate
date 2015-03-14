@@ -17,7 +17,7 @@ func TestAdd(t *testing.T) {
 		var ts tokset
 
 		for _, tok := range tt.toks {
-			ts = ts.Add(tok)
+			ts, _ = ts.Add(tok)
 		}
 
 		if !reflect.DeepEqual(ts, tt.expected) {

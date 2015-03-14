@@ -52,7 +52,7 @@ func (s *syndict) ID(word string) token {
 
 	key := s.stemmer.Stem(word)
 	if key != "" {
-		s.syns[key] = s.syns[key].Add(tok)
+		s.syns[key], _ = s.syns[key].Add(tok)
 	}
 
 	return tok

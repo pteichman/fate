@@ -8,21 +8,23 @@ type tokset []token
 
 // Add inserts tok into this set, if not already present. It may
 // return a new slice, so use its return value as the new set.
-func (t tokset) Add(tok token) tokset {
+//
+// Returns a bool signaling whether an add occurred.
+func (t tokset) Add(tok token) (tokset, bool) {
 	loc := t.search(tok)
 	if loc == len(t) {
-		return append(t, tok)
+		return append(t, tok), true
 	}
 
 	if t[loc] == tok {
-		return t
+		return t, false
 	}
 
 	t = append(t, 0)
 	copy(t[loc+1:], t[loc:])
 	t[loc] = tok
 
-	return t
+	return t, true
 }
 
 func (t tokset) search(x token) int {
