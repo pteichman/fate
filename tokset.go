@@ -11,11 +11,14 @@ type tokset []token
 //
 // Returns a bool signaling whether an add occurred.
 func (t tokset) Add(tok token) (tokset, bool) {
-	loc := t.search(tok)
-	if loc == len(t) {
+	size := len(t)
+
+	// Fast path for empty sets or brand new tokens.
+	if size == 0 || tok > t[size-1] {
 		return append(t, tok), true
 	}
 
+	loc := sort.Search(size, func(i int) bool { return t[i] >= tok })
 	if t[loc] == tok {
 		return t, false
 	}
@@ -25,14 +28,4 @@ func (t tokset) Add(tok token) (tokset, bool) {
 	t[loc] = tok
 
 	return t, true
-}
-
-func (t tokset) search(x token) int {
-	// Add a fast path for empty arrays or brand new tokens.
-	size := len(t)
-	if size == 0 || x > t[size-1] {
-		return size
-	}
-
-	return sort.Search(size, func(i int) bool { return t[i] >= x })
 }
