@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"unicode"
 )
 
 type token uint32
@@ -85,30 +86,100 @@ func (m *Model) ends() (token, token) {
 // Learn observes the text in a string and makes it available for
 // later replies.
 func (m *Model) Learn(text string) {
-	words := strings.Fields(text)
-	if len(words) == 1 {
+	if countFields(text, unicode.IsSpace) <= 1 {
 		// Refuse to learn single-word inputs.
 		return
 	}
 
-	ids := m.sentence(m.tokens, words)
+	iter := m.newCtxiter(text)
 
-	var ctx = bigram{ids[0], ids[1]}
-
-	for _, tok2 := range ids[2:] {
-		// Observe the trigram: (tok0, tok1, tok2).
-		if !m.fwd2.Observe(ctx, tok2) {
-			// And if ctx was new, observe the bigram (tok0, tok1).
-			m.fwd1.Observe(ctx.tok0, ctx.tok1)
-		}
-
-		// "one two" "three" -> "three two" "one"
-		ctx.tok0, tok2 = tok2, ctx.tok0
-		m.rev2.Observe(ctx, tok2)
-
-		// "two three" "four"
-		ctx.tok0, ctx.tok1 = ctx.tok1, ctx.tok0
+	for iter.next() {
+		m.observe(iter.trigram())
 	}
+}
+
+type ctxiter struct {
+	s    string
+	dict *syndict
+	end  token
+
+	ctx bigram
+	tok token
+}
+
+func (m *Model) newCtxiter(s string) *ctxiter {
+	start, end := m.ends()
+
+	return &ctxiter{
+		s:    strings.TrimFunc(s, unicode.IsSpace),
+		dict: m.tokens,
+		end:  end,
+
+		ctx: bigram{start, start},
+		tok: start,
+	}
+}
+
+func (ci *ctxiter) next() bool {
+	s := ci.s
+
+	fieldStart := -1
+	fieldEnd := len(s)
+
+	for i, rune := range s {
+		if unicode.IsSpace(rune) {
+			if fieldStart >= 0 {
+				fieldEnd = i
+				break
+			}
+		} else if fieldStart == -1 {
+			fieldStart = i
+		}
+	}
+
+	if fieldStart == -1 {
+		// had no field; shift in the end token.
+		ci.ctx = bigram{ci.ctx.tok1, ci.tok}
+		ci.tok = ci.end
+		return ci.ctx.tok0 != ci.end
+	}
+
+	// have a token from s[fieldStart:fieldEnd]
+	ci.ctx = bigram{ci.ctx.tok1, ci.tok}
+	ci.tok = ci.dict.ID(s[fieldStart:fieldEnd])
+	ci.s = s[fieldEnd:]
+
+	return true
+}
+
+func (ci *ctxiter) trigram() (bigram, token) {
+	return ci.ctx, ci.tok
+}
+
+func countFields(s string, f func(rune) bool) int {
+	n := 0
+	inField := false
+	for _, rune := range s {
+		wasInField := inField
+		inField = !f(rune)
+		if inField && !wasInField {
+			n++
+		}
+	}
+
+	return n
+}
+
+func (m *Model) observe(ctx bigram, tok token) {
+	// Observe the trigram: (tok0, tok1, tok2).
+	if !m.fwd2.Observe(ctx, tok) {
+		// And if ctx was new, observe the bigram (tok0, tok1).
+		m.fwd1.Observe(ctx.tok0, ctx.tok1)
+	}
+
+	// "one two" "three" -> "three two" "one"
+	ctx.tok0, tok = tok, ctx.tok0
+	m.rev2.Observe(ctx, tok)
 }
 
 func (m *Model) sentence(dict *syndict, words []string) []token {
