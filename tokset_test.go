@@ -1,6 +1,7 @@
 package fate
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -23,5 +24,15 @@ func TestAdd(t *testing.T) {
 		if !reflect.DeepEqual(ts, tt.expected) {
 			t.Errorf("Add(%v) -> %v, expected %v", tt.toks, ts, tt.expected)
 		}
+	}
+}
+
+func BenchmarkToksetAdd(b *testing.B) {
+	var ts tokset
+
+	rnd := rand.New(rand.NewSource(0))
+
+	for i := 0; i < b.N; i++ {
+		ts, _ = ts.Add(token(rnd.Intn(100000)))
 	}
 }
