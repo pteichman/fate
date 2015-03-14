@@ -86,7 +86,7 @@ func (m *Model) ends() (token, token) {
 // Learn observes the text in a string and makes it available for
 // later replies.
 func (m *Model) Learn(text string) {
-	if countFields(text, unicode.IsSpace) <= 1 {
+	if !learnable(text) {
 		// Refuse to learn single-word inputs.
 		return
 	}
@@ -156,18 +156,22 @@ func (ci *ctxiter) trigram() (bigram, token) {
 	return ci.ctx, ci.tok
 }
 
-func countFields(s string, f func(rune) bool) int {
+func learnable(s string) bool {
 	n := 0
 	inField := false
 	for _, rune := range s {
 		wasInField := inField
-		inField = !f(rune)
+		inField = !unicode.IsSpace(rune)
 		if inField && !wasInField {
 			n++
 		}
+
+		if n > 1 {
+			return true
+		}
 	}
 
-	return n
+	return false
 }
 
 func (m *Model) observe(ctx bigram, tok token) {
