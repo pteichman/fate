@@ -182,25 +182,6 @@ func (m *Model) observe(ctx bigram, tok token) {
 	m.rev2.Observe(ctx, tok)
 }
 
-func (m *Model) sentence(dict *syndict, words []string) []token {
-	start, end := m.ends()
-
-	// ids: <S> <S> tokens in the input string </S> </S>
-	ids := make([]token, 0, len(words)+4)
-
-	ids = append(ids, start)
-	ids = append(ids, start)
-
-	for _, f := range words {
-		ids = append(ids, dict.ID(f))
-	}
-
-	ids = append(ids, end)
-	ids = append(ids, end)
-
-	return ids
-}
-
 // Reply generates a reply string to str, given the current state of
 // the language model.
 func (m *Model) Reply(text string) string {
