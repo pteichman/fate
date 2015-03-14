@@ -69,10 +69,12 @@ func learnFile(m *Model, filename string) error {
 	return s.Err()
 }
 
+var quote = "On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question."
+
 func BenchmarkReply(b *testing.B) {
 	m := NewModel(Config{})
 
-	m.Learn("On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question.")
+	m.Learn(quote)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -85,12 +87,27 @@ func BenchmarkReply(b *testing.B) {
 func BenchmarkReplyTokens(b *testing.B) {
 	m := NewModel(Config{})
 
-	m.Learn("On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question.")
+	m.Learn(quote)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		m.replyTokens([]token{10})
+	}
+}
+
+// BenchmarkLearnOverhead checks the constant overhead of learning
+// already-learned trigrams.
+func BenchmarkLearnOverhead(b *testing.B) {
+	m := NewModel(Config{})
+
+	m.Learn(quote)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		m.Learn(quote)
 	}
 }
