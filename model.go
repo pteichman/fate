@@ -230,10 +230,25 @@ func (m *Model) replyTokens(tokens []token) []token {
 func (m *Model) conflate(words []string) []token {
 	var pivots []token
 	for _, w := range words {
-		pivots = append(pivots, m.tokens.Syns(w)...)
+		syns := m.tokens.Syns(w)
+		if tok, ok := m.tokens.CheckID(w); ok && !in(syns, tok) {
+			pivots = append(pivots, tok)
+		}
+
+		pivots = append(pivots, syns...)
 	}
 
 	return pivots
+}
+
+func in(haystack []token, needle token) bool {
+	for _, tok := range haystack {
+		if tok == needle {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (m *Model) pickPivot(tokens []token) token {

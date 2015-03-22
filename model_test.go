@@ -3,6 +3,7 @@ package fate
 import (
 	"bufio"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +17,24 @@ func TestReply(t *testing.T) {
 
 	if reply != text {
 		t.Errorf("Reply(this is a test) => %s, want %s", reply, text)
+	}
+}
+
+// TestConflate ensures an unlearned token isn't in conflate()
+// results, a learned one is regardless of how it's stemmed.
+func TestConflate(t *testing.T) {
+	model := NewModel(Config{})
+
+	toks := model.conflate(strings.Fields("_"))
+	if len(toks) != 0 {
+		t.Errorf("conflate(_) => [%d]token, want [0]token", len(toks))
+	}
+
+	model.Learn("foo bar _ baz")
+
+	toks = model.conflate(strings.Fields("_"))
+	if len(toks) != 1 {
+		t.Errorf("conflate(_) => [%d]token, want [1]token", len(toks))
 	}
 }
 
