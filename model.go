@@ -176,13 +176,13 @@ func learnable(s string) bool {
 
 func (m *Model) observe(ctx bigram, tok token) {
 	// Observe the trigram: (tok0, tok1, tok2).
-	new2, new3 := m.fwd2.Observe(ctx, tok)
-	if new2 {
+	old2, old3 := m.fwd2.Observe(ctx, tok)
+	if !old2 {
 		// If the bigram was new, observe that in fwd1.
 		m.fwd1.Observe(ctx.tok0, ctx.tok1)
 	}
 
-	if new3 {
+	if !old3 {
 		// If the trigram was new, observe that in rev2.
 		ctx.tok0, tok = tok, ctx.tok0
 		m.rev2.Observe(ctx, tok)
