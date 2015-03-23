@@ -8,12 +8,13 @@ func (o obs1) Observe(tok0 token, tok1 token) {
 
 type obs2 map[bigram]tokset
 
-func (o obs2) Observe(ctx bigram, tok2 token) bool {
-	set, ok := o[ctx]
+func (o obs2) Observe(ctx bigram, tok2 token) (new2, new3 bool) {
+	set, old2 := o[ctx]
 
-	if newset, added := set.Add(tok2); added {
+	if newset, new3 := set.Add(tok2); new3 {
 		o[ctx] = newset
+		return !old2, new3
 	}
 
-	return ok
+	return !old2, false
 }

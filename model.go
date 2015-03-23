@@ -176,14 +176,17 @@ func learnable(s string) bool {
 
 func (m *Model) observe(ctx bigram, tok token) {
 	// Observe the trigram: (tok0, tok1, tok2).
-	if !m.fwd2.Observe(ctx, tok) {
-		// And if ctx was new, observe the bigram (tok0, tok1).
+	new2, new3 := m.fwd2.Observe(ctx, tok)
+	if new2 {
+		// If the bigram was new, observe that in fwd1.
 		m.fwd1.Observe(ctx.tok0, ctx.tok1)
 	}
 
-	// "one two" "three" -> "three two" "one"
-	ctx.tok0, tok = tok, ctx.tok0
-	m.rev2.Observe(ctx, tok)
+	if new3 {
+		// If the trigram was new, observe that in rev2.
+		ctx.tok0, tok = tok, ctx.tok0
+		m.rev2.Observe(ctx, tok)
+	}
 }
 
 // Reply generates a reply string to str, given the current state of
