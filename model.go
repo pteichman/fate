@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -35,6 +36,7 @@ type Model struct {
 	// to track (tok2 tok1 -> tok0).
 	rev2 obs2
 
+	lock *sync.Mutex
 	rand *rand.Rand
 }
 
@@ -75,6 +77,7 @@ func NewModel(opts Config) *Model {
 
 		rev2: make(obs2),
 
+		lock: &sync.Mutex{},
 		rand: rand.New(opts.randOrDefault()),
 	}
 }
@@ -86,6 +89,9 @@ func (m *Model) ends() (token, token) {
 // Learn observes the text in a string and makes it available for
 // later replies.
 func (m *Model) Learn(text string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if !learnable(text) {
 		// Refuse to learn single-word inputs.
 		return
@@ -192,8 +198,12 @@ func (m *Model) observe(ctx bigram, tok token) {
 // Reply generates a reply string to str, given the current state of
 // the language model.
 func (m *Model) Reply(text string) string {
+	m.lock.Lock()
 	tokens := m.conflate(strings.Fields(text))
-	return join(m.tokens, m.replyTokens(tokens))
+	reply := join(m.tokens, m.replyTokens(tokens))
+	m.lock.Unlock()
+
+	return reply
 }
 
 func (m *Model) replyTokens(tokens []token) []token {
