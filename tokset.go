@@ -5,120 +5,125 @@ import (
 	"sort"
 )
 
-// tokset maintains a set of tokens in a slice. Use Add to insert a
-// token and use the slice itself to get the tokens.
+// tokset maintains a set of tokens as a sorted slice of integers.
+//
+// 1-byte tokens (<= 0xFF) are in buf[0:t2]
+// 2-byte tokens (<= 0xFFFF) are in buf[t2:t3]
+// 3-byte tokens (<= 0xFFFFFF) are in buf[t3:]
+//
+// They're stored little-endian. Adds are O(log N). Choosing a random
+// token in the set is O(1).
+//
+// tokens greater than 0xFFFFFF are not currently supported. This is
+// enough token space to handle the Web 1T corpus.
 type tokset struct {
-	t1 []uint8
-	t2 []uint16
-	t3 []byte
-	t4 []uint32
+	buf []byte
+
+	// count of 2-byte tokens, count of 1-byte tokens
+	c2 uint16
+	c1 uint8
 }
 
-// Add inserts tok into this set if not already present.
-//
-// Returns a bool signaling whether the token was already in the set
-// (similar logic to map lookups).
 func (t *tokset) Add(tok token) bool {
-	var found bool
+	size := len(t.buf)
 
 	switch {
 	case tok <= 0xFF:
-		t.t1, found = add1(t.t1, tok)
-		return found
+		if size == 0 {
+			t.buf = append(t.buf, byte(tok))
+			t.c1++
+			return false
+		}
+
+		return t.add1(tok)
 	case tok <= 0xFFFF:
-		t.t2, found = add2(t.t2, tok)
-		return found
+		if size == 0 {
+			t.buf = append(t.buf, byte(tok), byte(tok>>8))
+			t.c2++
+			return false
+		}
+
+		return t.add2(tok)
 	case tok <= 0xFFFFFF:
-		t.t3, found = add3(t.t3, tok)
-		return found
-	case tok <= 0xFFFFFFFF:
-		t.t4, found = add4(t.t4, tok)
-		return found
+		if size == 0 {
+			t.buf = append(t.buf, byte(tok), byte(tok>>8), byte(tok>>16))
+			return false
+		}
+
+		return t.add3(tok)
 	}
 
 	panic("oops")
 }
 
-func add1(buf []uint8, tok token) ([]byte, bool) {
-	val := uint8(tok)
-
-	size := len(buf)
-	if size == 0 {
-		return append(buf, val), false
-	}
-
-	loc := sort.Search(size, func(i int) bool { return buf[i] >= val })
-	if loc < size && buf[loc] == val {
-		return buf, true
-	}
-
-	buf = append(buf, 0)
-	copy(buf[loc+1:], buf[loc:])
-	buf[loc] = val
-
-	return buf, false
+func (t *tokset) span1() []byte {
+	return t.buf[0:t.c1]
 }
 
-func add2(buf []uint16, tok token) ([]uint16, bool) {
-	val := uint16(tok)
-
-	size := len(buf)
-	if size == 0 {
-		return append(buf, val), false
-	}
-
-	loc := sort.Search(size, func(i int) bool { return buf[i] >= val })
-	if loc < len(buf) && buf[loc] == val {
-		return buf, true
-	}
-
-	buf = append(buf, 0)
-	copy(buf[loc+1:], buf[loc:])
-	buf[loc] = val
-
-	return buf, false
+func (t *tokset) span2() []byte {
+	return t.buf[int(t.c1) : int(t.c1)+2*int(t.c2)]
 }
 
-func add3(buf []byte, tok token) ([]byte, bool) {
-	val := make([]byte, 3)
-	put3(val, tok)
-
-	size := len(buf) / 3
-	if size == 0 {
-		return append(buf, val...), false
-	}
-
-	loc := sort.Search(size, func(i int) bool { return unpack3(buf[3*i:]) >= tok })
-
-	if 3*loc < len(buf) && unpack3(buf[3*loc:]) == tok {
-		return buf, true
-	}
-
-	buf = append(buf, 0, 0, 0)
-	copy(buf[3*(loc+1):], buf[3*loc:])
-	copy(buf[3*loc:], val)
-
-	return buf, false
+func (t *tokset) span3() []byte {
+	return t.buf[int(t.c1)+2*int(t.c2):]
 }
 
-func add4(buf []uint32, tok token) ([]uint32, bool) {
-	val := uint32(tok)
+func (t *tokset) add1(tok token) bool {
+	span := t.span1()
+	loc := sort.Search(len(span), func(i int) bool {
+		return token(span[i]) >= tok
+	})
 
-	size := len(buf)
-	if size == 0 {
-		return append(buf, val), false
+	if loc < len(span) && token(span[loc]) == tok {
+		return true
 	}
 
-	loc := sort.Search(size, func(i int) bool { return buf[i] >= val })
-	if loc < len(buf) && buf[loc] == val {
-		return buf, true
+	t.buf = append(t.buf, 0)
+	copy(t.buf[loc+1:], t.buf[loc:])
+	t.buf[loc] = byte(tok)
+
+	t.c1++
+
+	return false
+}
+
+func (t *tokset) add2(tok token) bool {
+	span := t.span2()
+	idx := sort.Search(len(span)/2, func(i int) bool {
+		return unpack2(span[2*i:]) >= tok
+	})
+
+	if idx < len(span)/2 && unpack2(span[2*idx:]) == tok {
+		return true
 	}
 
-	buf = append(buf, 0)
-	copy(buf[loc+1:], buf[loc:])
-	buf[loc] = val
+	t.buf = append(t.buf, 0, 0)
 
-	return buf, false
+	loc := int(t.c1) + 2*idx
+	copy(t.buf[loc+2:], t.buf[loc:])
+	put2(t.buf[loc:], tok)
+
+	t.c2++
+
+	return false
+}
+func (t *tokset) add3(tok token) bool {
+	span := t.span3()
+	idx := sort.Search(len(span)/3, func(i int) bool {
+		return unpack3(span[3*i:]) >= tok
+	})
+
+	if idx < len(span)/3 && unpack3(span[3*idx:]) == tok {
+		return true
+	}
+
+	t.buf = append(t.buf, 0, 0, 0)
+
+	loc := int(t.c1) + 2*int(t.c2) + 3*idx
+	copy(t.buf[loc+3:], t.buf[loc:])
+	put3(t.buf[loc:], tok)
+
+	return false
 }
 
 func (t *tokset) Len() int {
@@ -126,7 +131,7 @@ func (t *tokset) Len() int {
 		return 0
 	}
 
-	return len(t.t1) + len(t.t2) + len(t.t3)/3 + len(t.t4)
+	return int(t.c1) + int(t.c2) + len(t.span3())/3
 }
 
 func (t *tokset) Tokens() []token {
@@ -135,27 +140,36 @@ func (t *tokset) Tokens() []token {
 	}
 
 	var tokens []token
+	for _, val := range t.span1() {
+		tokens = append(tokens, token(val))
+	}
 
-	for _, val := range t.t1 {
-		tokens = append(tokens, token(val))
+	span2 := t.span2()
+	for i := 0; i < len(span2); i += 2 {
+		tokens = append(tokens, unpack2(span2[i:]))
 	}
-	for _, val := range t.t2 {
-		tokens = append(tokens, token(val))
-	}
-	for i := 0; i < len(t.t3); i += 3 {
-		tokens = append(tokens, unpack3(t.t3[i:]))
-	}
-	for _, val := range t.t4 {
-		tokens = append(tokens, token(val))
+
+	span3 := t.span3()
+	for i := 0; i < len(span3); i += 3 {
+		tokens = append(tokens, unpack3(span3[i:]))
 	}
 
 	return tokens
+}
+
+func put2(buf []byte, tok token) {
+	buf[0] = byte(tok)
+	buf[1] = byte(tok >> 8)
 }
 
 func put3(buf []byte, tok token) {
 	buf[0] = byte(tok)
 	buf[1] = byte(tok >> 8)
 	buf[2] = byte(tok >> 16)
+}
+
+func unpack2(buf []byte) token {
+	return token(buf[0]) | token(buf[1])<<8
 }
 
 func unpack3(buf []byte) token {
@@ -166,14 +180,14 @@ func (t tokset) Choice(r *rand.Rand) token {
 	index := r.Intn(t.Len())
 
 	switch {
-	case index < len(t.t1):
-		return token(t.t1[index])
-	case index < len(t.t1)+len(t.t2):
-		return token(t.t2[index-len(t.t1)])
-	case index < len(t.t1)+len(t.t2)+len(t.t3):
-		return unpack3(t.t3[index-len(t.t1)-len(t.t2):])
-	case index < len(t.t1)+len(t.t2)+len(t.t3)+len(t.t4):
-		return token(t.t4[index-len(t.t1)-len(t.t2)-len(t.t3)])
+	case index < int(t.c1):
+		return token(t.buf[index])
+	case index < int(t.c1)+int(t.c2):
+		span := t.span2()
+		return unpack2(span[2*(index-int(t.c1)):])
+	case index < t.Len():
+		span := t.span3()
+		return unpack3(span[3*(index-(int(t.c2)+int(t.c1))):])
 	}
 
 	panic("oops")
