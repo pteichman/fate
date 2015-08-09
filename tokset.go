@@ -25,11 +25,9 @@ type tokset struct {
 }
 
 func (t *tokset) Add(tok token) bool {
-	size := len(t.buf)
-
 	switch {
 	case tok <= 0xFF:
-		if size == 0 {
+		if len(t.buf) == 0 {
 			t.buf = append(t.buf, byte(tok))
 			t.c1++
 			return false
@@ -37,7 +35,7 @@ func (t *tokset) Add(tok token) bool {
 
 		return t.add1(tok)
 	case tok <= 0xFFFF:
-		if size == 0 {
+		if len(t.buf) == 0 {
 			t.buf = append(t.buf, byte(tok), byte(tok>>8))
 			t.c2++
 			return false
@@ -45,7 +43,7 @@ func (t *tokset) Add(tok token) bool {
 
 		return t.add2(tok)
 	case tok <= 0xFFFFFF:
-		if size == 0 {
+		if len(t.buf) == 0 {
 			t.buf = append(t.buf, byte(tok), byte(tok>>8), byte(tok>>16))
 			return false
 		}
