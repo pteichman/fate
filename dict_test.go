@@ -29,13 +29,21 @@ func TestDict(t *testing.T) {
 	}
 }
 
+func toks(toks ...token) *tokset {
+	ts := &tokset{}
+	for _, tok := range toks {
+		ts.Add(tok)
+	}
+	return ts
+}
+
 func TestSyndict(t *testing.T) {
 	var tests = []struct {
 		strs     []string
 		query    string
-		expected tokset
+		expected *tokset
 	}{
-		{[]string{"foo", "Foo", "bar", "baz"}, "FOO", tokset{0, 1}},
+		{[]string{"foo", "Foo", "bar", "baz"}, "FOO", toks(0, 1)},
 	}
 
 	for ti, tt := range tests {
@@ -46,7 +54,7 @@ func TestSyndict(t *testing.T) {
 		}
 
 		res := d.Syns(tt.query)
-		if !reflect.DeepEqual(res, tt.expected) {
+		if !reflect.DeepEqual(res, tt.expected.Tokens()) {
 			t.Errorf("[%d] Get(%q) => %d, want %d", ti, tt.query, res, tt.expected)
 		}
 	}

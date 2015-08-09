@@ -276,7 +276,7 @@ func (m *Model) pickPivot(tokens []token) token {
 func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
 	for {
 		toks := obs[pos]
-		if len(toks) == 0 {
+		if toks.Len() == 0 {
 			log.Fatal("ran out of chain at", pos)
 		}
 
