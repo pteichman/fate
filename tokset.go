@@ -1,6 +1,9 @@
 package fate
 
-import "sort"
+import (
+	"math/rand"
+	"sort"
+)
 
 // tokset maintains a set of tokens in a slice. Use Add to insert a
 // token and use the slice itself to get the tokens.
@@ -29,4 +32,8 @@ func (t tokset) Add(tok token) (tokset, bool) {
 	t[loc] = tok
 
 	return t, false
+}
+
+func (t tokset) Choice(r *rand.Rand) token {
+	return t[r.Intn(len(t))]
 }

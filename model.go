@@ -280,7 +280,7 @@ func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
 			log.Fatal("ran out of chain at", pos)
 		}
 
-		tok := m.choice(toks)
+		tok := toks.Choice(m.rand)
 		if tok == goal {
 			return path
 		}
