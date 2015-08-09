@@ -7,9 +7,9 @@ import (
 
 // tokset maintains a set of tokens as a sorted slice of integers.
 //
-// 1-byte tokens (<= 0xFF) are in buf[0:t2]
-// 2-byte tokens (<= 0xFFFF) are in buf[t2:t3]
-// 3-byte tokens (<= 0xFFFFFF) are in buf[t3:]
+// 1-byte tokens (<= 0xFF) are in buf[0:c1]
+// 2-byte tokens (<= 0xFFFF) are in buf[c1:c1+2*c2]
+// 3-byte tokens (<= 0xFFFFFF) are in buf[c1+2*c2:]
 //
 // They're stored little-endian. Adds are O(log N). Choosing a random
 // token in the set is O(1).
