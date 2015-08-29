@@ -90,35 +90,9 @@ func learnFile(m *Model, filename string) error {
 
 var quote = "On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question."
 
-func BenchmarkReply(b *testing.B) {
-	m := NewModel(Config{})
-
-	m.Learn(quote)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		m.Reply("apprehend")
-	}
-}
-
-func BenchmarkReplyTokens(b *testing.B) {
-	m := NewModel(Config{})
-
-	m.Learn(quote)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		m.replyTokens([]token{10})
-	}
-}
-
-// BenchmarkLearnOverhead checks the constant overhead of learning
+// BenchmarkOverhead checks the constant overhead of learning
 // already-learned trigrams.
-func BenchmarkLearnOverhead(b *testing.B) {
+func BenchmarkOverhead(b *testing.B) {
 	m := NewModel(Config{})
 
 	m.Learn(quote)
