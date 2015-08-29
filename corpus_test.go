@@ -3,6 +3,7 @@ package fate
 import (
 	"math/rand"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -93,4 +94,45 @@ func BenchmarkReply(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		model.Reply(sentences[i%len(sentences)])
 	}
+}
+
+func BenchmarkLearnParallel(b *testing.B) {
+	sentences := corpus(vocab(100000), b.N, func() int {
+		return clamp(gauss(10, 5))
+	})
+
+	model := NewModel(Config{})
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	var i int32
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			j := atomic.AddInt32(&i, 1)
+			model.Learn(sentences[int(j)%len(sentences)])
+		}
+	})
+}
+
+func BenchmarkReplyParallel(b *testing.B) {
+	sentences := corpus(vocab(100000), b.N, func() int {
+		return clamp(gauss(10, 5))
+	})
+
+	model := NewModel(Config{})
+	for _, sen := range sentences {
+		model.Learn(sen)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		var i int
+		for pb.Next() {
+			model.Reply(sentences[i%len(sentences)])
+			i++
+		}
+	})
 }
