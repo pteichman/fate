@@ -34,7 +34,7 @@ func (d *dict) Word(tok token) string {
 type syndict struct {
 	d *dict
 
-	syns    map[string]*tokset
+	syns    map[string]*tokset2
 	stemmer Stemmer
 }
 
@@ -54,7 +54,7 @@ func (s *syndict) ID(word string) token {
 	if key != "" {
 		toks, ok := s.syns[key]
 		if !ok {
-			toks = &tokset{}
+			toks = &tokset2{}
 			s.syns[key] = toks
 		}
 
@@ -80,7 +80,7 @@ func (s *syndict) Word(tok token) string {
 func newSyndict(s Stemmer) *syndict {
 	return &syndict{
 		d:       newDict(),
-		syns:    make(map[string]*tokset),
+		syns:    make(map[string]*tokset2),
 		stemmer: s,
 	}
 }
