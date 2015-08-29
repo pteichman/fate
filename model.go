@@ -89,19 +89,17 @@ func (m *Model) ends() (token, token) {
 // Learn observes the text in a string and makes it available for
 // later replies.
 func (m *Model) Learn(text string) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
 	if !learnable(text) {
 		// Refuse to learn single-word inputs.
 		return
 	}
 
+	m.lock.Lock()
 	iter := m.newCtxiter(text)
-
 	for iter.next() {
 		m.observe(iter.trigram())
 	}
+	m.lock.Unlock()
 }
 
 type ctxiter struct {
