@@ -241,7 +241,7 @@ func (m *Model) replyTokens(tokens []token) []token {
 }
 
 func (m *Model) conflate(words []string) []token {
-	var pivots []token
+	var pivots = make([]token, 0, len(words))
 	for _, w := range words {
 		syns := m.tokens.Syns(w)
 		if tok, ok := m.tokens.CheckID(w); ok && !in(syns, tok) {

@@ -137,7 +137,7 @@ func (t *tokset) Tokens() []token {
 		return nil
 	}
 
-	var tokens []token
+	var tokens = make([]token, 0, t.Len())
 	for _, val := range t.span1() {
 		tokens = append(tokens, token(val))
 	}
