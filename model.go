@@ -141,11 +141,9 @@ func (m *Model) observe(ctx bigram, tok token) {
 // Reply generates a reply string to str, given the current state of
 // the language model.
 func (m *Model) Reply(text string) string {
-	intn := &prng{m.rand.Next()}
-
 	m.lock.RLock()
 	tokens := m.conflate(strings.Fields(text))
-	reply := join(m.tokens, m.replyTokens(tokens, intn))
+	reply := join(m.tokens, m.replyTokens(tokens, &prng{m.rand.Next()}))
 	m.lock.RUnlock()
 
 	return reply
