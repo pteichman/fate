@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
-	"time"
 	"unicode"
 )
 
@@ -70,6 +69,7 @@ func (c Config) randOrDefault() rand.Source {
 
 // NewModel constructs an empty language model.
 func NewModel(opts Config) *Model {
+	seed := opts.randOrDefault().Int63()
 	return &Model{
 		tokens: newSyndict(opts.stemmerOrDefault()),
 
@@ -79,7 +79,7 @@ func NewModel(opts Config) *Model {
 		rev2: make(obs2),
 
 		lock: &sync.RWMutex{},
-		rand: &prng{uint64(time.Now().UnixNano())},
+		rand: &prng{uint64(seed)},
 	}
 }
 
