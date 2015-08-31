@@ -37,7 +37,7 @@ type Model struct {
 	rev2 obs2
 
 	lock *sync.Mutex
-	rand *rand.Rand
+	rand Intn
 }
 
 // Config holds Model configuration data. An empty Config struct
@@ -78,7 +78,7 @@ func NewModel(opts Config) *Model {
 		rev2: make(obs2),
 
 		lock: &sync.Mutex{},
-		rand: rand.New(opts.randOrDefault()),
+		rand: &prng{uint64(rand.Int63())},
 	}
 }
 

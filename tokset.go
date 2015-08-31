@@ -1,9 +1,6 @@
 package fate
 
-import (
-	"math/rand"
-	"sort"
-)
+import "sort"
 
 // tokset maintains a set of tokens as a sorted slice of integers.
 //
@@ -174,7 +171,7 @@ func unpack3(buf []byte) token {
 	return token(buf[0]) | token(buf[1])<<8 | token(buf[2])<<16
 }
 
-func (t tokset) Choice(r *rand.Rand) token {
+func (t tokset) Choice(r Intn) token {
 	index := r.Intn(t.Len())
 
 	switch {
