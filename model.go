@@ -155,12 +155,15 @@ func (m *Model) Reply(text string) string {
 }
 
 func (m *Model) replyTokens(tokens []token, intn Intn) []token {
-	pivot := m.pickPivot(tokens, intn)
-
-	if len(m.fwd1[pivot]) == 0 {
-		log.Printf("Failed at pivot: %d", pivot)
+	var pivot token
+	if len(tokens) > 0 {
+		pivot = choice(tokens, intn)
+	} else {
+		// Babble. Assume tokens 0 & 1 are start and end.
+		pivot = token(intn.Intn(m.tokens.Len()-2) + 2)
 	}
-	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot], intn)}
+
+	fwdctx := bigram{tok0: pivot, tok1: choice(m.fwd1[pivot], intn)}
 
 	start, end := m.startTok, m.endTok
 
@@ -215,15 +218,6 @@ func in(haystack []token, needle token) bool {
 	return false
 }
 
-func (m *Model) pickPivot(tokens []token, intn Intn) token {
-	if len(tokens) > 0 {
-		return tokens[intn.Intn(len(tokens))]
-	}
-
-	// No valid pivots, so babble. Assume tokens 0 & 1 are start and end.
-	return token(intn.Intn(m.tokens.Len()-2) + 2)
-}
-
 func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
 	for {
 		toks := obs[pos]
@@ -276,6 +270,6 @@ func joinsize(tokens *syndict, path []token) int {
 	return count
 }
 
-func (m *Model) choice(toks []token, intn Intn) token {
+func choice(toks []token, intn Intn) token {
 	return toks[intn.Intn(len(toks))]
 }
