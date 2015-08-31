@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 )
 
@@ -36,8 +37,8 @@ type Model struct {
 	// to track (tok2 tok1 -> tok0).
 	rev2 obs2
 
-	lock *sync.Mutex
-	rand Intn
+	lock *sync.RWMutex
+	rand *prng
 }
 
 // Config holds Model configuration data. An empty Config struct
@@ -77,8 +78,8 @@ func NewModel(opts Config) *Model {
 
 		rev2: make(obs2),
 
-		lock: &sync.Mutex{},
-		rand: &prng{uint64(rand.Int63())},
+		lock: &sync.RWMutex{},
+		rand: &prng{uint64(time.Now().UnixNano())},
 	}
 }
 
@@ -140,18 +141,20 @@ func (m *Model) observe(ctx bigram, tok token) {
 // Reply generates a reply string to str, given the current state of
 // the language model.
 func (m *Model) Reply(text string) string {
-	m.lock.Lock()
+	intn := &prng{m.rand.Next()}
+
+	m.lock.RLock()
 	tokens := m.conflate(strings.Fields(text))
-	reply := join(m.tokens, m.replyTokens(tokens))
-	m.lock.Unlock()
+	reply := join(m.tokens, m.replyTokens(tokens, intn))
+	m.lock.RUnlock()
 
 	return reply
 }
 
-func (m *Model) replyTokens(tokens []token) []token {
-	pivot := m.pickPivot(tokens)
+func (m *Model) replyTokens(tokens []token, intn Intn) []token {
+	pivot := m.pickPivot(tokens, intn)
 
-	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot])}
+	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot], intn)}
 
 	start, end := m.ends()
 
@@ -206,13 +209,13 @@ func in(haystack []token, needle token) bool {
 	return false
 }
 
-func (m *Model) pickPivot(tokens []token) token {
+func (m *Model) pickPivot(tokens []token, intn Intn) token {
 	if len(tokens) > 0 {
-		return tokens[m.rand.Intn(len(tokens))]
+		return tokens[intn.Intn(len(tokens))]
 	}
 
 	// No valid pivots, so babble. Assume tokens 0 & 1 are start and end.
-	return token(m.rand.Intn(m.tokens.Len()-2) + 2)
+	return token(intn.Intn(m.tokens.Len()-2) + 2)
 }
 
 func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
@@ -267,6 +270,6 @@ func joinsize(tokens *syndict, path []token) int {
 	return count
 }
 
-func (m *Model) choice(toks []token) token {
-	return toks[m.rand.Intn(len(toks))]
+func (m *Model) choice(toks []token, intn Intn) token {
+	return toks[intn.Intn(len(toks))]
 }
