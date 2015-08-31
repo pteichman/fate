@@ -95,24 +95,13 @@ func (m *Model) Learn(text string) {
 	}
 
 	m.lock.Lock()
-	iter := m.newCtxiter(text)
+	start, end := m.ends()
+
+	iter := newCtxiter(text, start, end, m.tokens.ID)
 	for iter.next() {
 		m.observe(iter.trigram())
 	}
 	m.lock.Unlock()
-}
-
-func (m *Model) newCtxiter(s string) *ctxiter {
-	start, end := m.ends()
-
-	return &ctxiter{
-		s:    strings.TrimFunc(s, unicode.IsSpace),
-		dict: m.tokens,
-		end:  end,
-
-		ctx: bigram{start, start},
-		tok: start,
-	}
 }
 
 func learnable(s string) bool {

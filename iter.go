@@ -1,14 +1,31 @@
 package fate
 
-import "unicode"
+import (
+	"strings"
+	"unicode"
+)
 
+// ctxiter splits a string into trigrams using unicode.IsSpace. It's
+// optimized for minimal allocations. The trigrams are provided as
+// (bigram, token) pairs.
 type ctxiter struct {
-	s    string
-	dict *syndict
-	end  token
+	s        string
+	word2tok func(string) token
+	end      token
 
 	ctx bigram
 	tok token
+}
+
+func newCtxiter(str string, start, end token, word2tok func(string) token) *ctxiter {
+	return &ctxiter{
+		s:        strings.TrimFunc(str, unicode.IsSpace),
+		word2tok: word2tok,
+		end:      end,
+
+		ctx: bigram{start, start},
+		tok: start,
+	}
 }
 
 func (ci *ctxiter) next() bool {
@@ -37,7 +54,7 @@ func (ci *ctxiter) next() bool {
 
 	// have a token from s[fieldStart:fieldEnd]
 	ci.ctx = bigram{ci.ctx.tok1, ci.tok}
-	ci.tok = ci.dict.ID(s[fieldStart:fieldEnd])
+	ci.tok = ci.word2tok(s[fieldStart:fieldEnd])
 	ci.s = s[fieldEnd:]
 
 	return true
