@@ -73,6 +73,23 @@ func TestDuel(t *testing.T) {
 	}
 }
 
+func TestEmpty(t *testing.T) {
+	// Make sure Model doesn't panic when empty.
+	model := NewModel(Config{})
+
+	reply := model.Reply("")
+	if reply != "" {
+		t.Errorf("Reply() => %s, want empty string", reply)
+	}
+
+	model.Learn("")
+
+	reply = model.Reply("")
+	if reply != "" {
+		t.Errorf("Reply() => %s, want empty string", reply)
+	}
+}
+
 func learnFile(m *Model, filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {

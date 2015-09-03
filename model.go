@@ -24,7 +24,9 @@ func (b bigram) reverse() bigram {
 // Model is a trigram language model that can learn and respond to
 // text.
 type Model struct {
-	tokens *syndict
+	tokens   *syndict
+	startTok token
+	endTok   token
 
 	// We track (tok0 -> tok1) and (tok0 tok1 -> tok2) in
 	// the forward direction, so we can efficiently choose
@@ -70,8 +72,12 @@ func (c Config) randOrDefault() rand.Source {
 // NewModel constructs an empty language model.
 func NewModel(opts Config) *Model {
 	seed := opts.randOrDefault().Int63()
+	tokens := newSyndict(opts.stemmerOrDefault())
+
 	return &Model{
-		tokens: newSyndict(opts.stemmerOrDefault()),
+		tokens:   tokens,
+		startTok: tokens.ID("<S>"),
+		endTok:   tokens.ID("</S>"),
 
 		fwd1: make(obs1),
 		fwd2: make(obs2),
@@ -83,10 +89,6 @@ func NewModel(opts Config) *Model {
 	}
 }
 
-func (m *Model) ends() (token, token) {
-	return m.tokens.ID("<S>"), m.tokens.ID("</S>")
-}
-
 // Learn observes the text in a string and makes it available for
 // later replies.
 func (m *Model) Learn(text string) {
@@ -96,9 +98,7 @@ func (m *Model) Learn(text string) {
 	}
 
 	m.lock.Lock()
-	start, end := m.ends()
-
-	iter := newCtxiter(text, start, end, m.tokens.ID)
+	iter := newCtxiter(text, m.startTok, m.endTok, m.tokens.ID)
 	for iter.next() {
 		m.observe(iter.trigram())
 	}
@@ -139,9 +139,14 @@ func (m *Model) observe(ctx bigram, tok token) {
 }
 
 // Reply generates a reply string to str, given the current state of
-// the language model.
+// the language model. If no text has been learned, returns an empty
+// string.
 func (m *Model) Reply(text string) string {
 	m.lock.RLock()
+	if m.tokens.Len() <= 2 {
+		return ""
+	}
+
 	tokens := m.conflate(strings.Fields(text))
 	reply := join(m.tokens, m.replyTokens(tokens, &prng{m.rand.Next()}))
 	m.lock.RUnlock()
@@ -152,9 +157,12 @@ func (m *Model) Reply(text string) string {
 func (m *Model) replyTokens(tokens []token, intn Intn) []token {
 	pivot := m.pickPivot(tokens, intn)
 
+	if len(m.fwd1[pivot]) == 0 {
+		log.Printf("Failed at pivot: %d", pivot)
+	}
 	fwdctx := bigram{tok0: pivot, tok1: m.choice(m.fwd1[pivot], intn)}
 
-	start, end := m.ends()
+	start, end := m.startTok, m.endTok
 
 	var path []token
 
