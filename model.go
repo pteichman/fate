@@ -28,15 +28,13 @@ type Model struct {
 	startTok token
 	endTok   token
 
-	// We track (tok0 -> tok1) and (tok0 tok1 -> tok2) in
-	// the forward direction, so we can efficiently choose
-	// random tok0-containing contexts.
+	// We track (tok0 -> tok1) and (tok0 tok1 -> tok2) in the
+	// forward direction, so we can efficiently choose random
+	// tok0-containing contexts. In the reverse direction, we
+	// only need to be able to track (tok2 tok1 -> tok0).
 	fwd1 obs1
-	fwd2 obs2
 
-	// In the reverse direction, we only need to be able
-	// to track (tok2 tok1 -> tok0).
-	rev2 obs2
+	tri *trigrams
 
 	lock *sync.RWMutex
 	rand *prng
@@ -80,9 +78,7 @@ func NewModel(opts Config) *Model {
 		endTok:   tokens.ID("</S>"),
 
 		fwd1: make(obs1),
-		fwd2: make(obs2),
-
-		rev2: make(obs2),
+		tri:  &trigrams{make(obs2), make(obs2)},
 
 		lock: &sync.RWMutex{},
 		rand: &prng{uint64(seed)},
@@ -125,16 +121,10 @@ func learnable(s string) bool {
 
 func (m *Model) observe(ctx bigram, tok token) {
 	// Observe the trigram: (tok0, tok1, tok2).
-	old2, old3 := m.fwd2.Observe(ctx, tok)
+	old2, _ := m.tri.Observe(ctx, tok)
 	if !old2 {
 		// If the bigram was new, observe that in fwd1.
 		m.fwd1.Observe(ctx.tok0, ctx.tok1)
-	}
-
-	if !old3 {
-		// If the trigram was new, observe that in rev2.
-		ctx.tok0, tok = tok, ctx.tok0
-		m.rev2.Observe(ctx, tok)
 	}
 }
 
@@ -171,7 +161,7 @@ func (m *Model) replyTokens(tokens []token, intn Intn) []token {
 
 	// Compute the beginning of the sentence by walking from
 	// fwdctx back to start.
-	path = m.follow(path, m.rev2, fwdctx.reverse(), start)
+	path = m.follow(path, m.tri.Rev, fwdctx.reverse(), start)
 
 	// Reverse what we have so far.
 	reverse(path)
@@ -188,7 +178,7 @@ func (m *Model) replyTokens(tokens []token, intn Intn) []token {
 
 		// Compute the end of the sentence by walking forward
 		// from fwdctx to end.
-		path = m.follow(path, m.fwd2, fwdctx, end)
+		path = m.follow(path, m.tri.Fwd, fwdctx, end)
 	}
 
 	return path
@@ -218,9 +208,9 @@ func in(haystack []token, needle token) bool {
 	return false
 }
 
-func (m *Model) follow(path []token, obs obs2, pos bigram, goal token) []token {
+func (m *Model) follow(path []token, next func(bigram) *tokset, pos bigram, goal token) []token {
 	for {
-		toks := obs[pos]
+		toks := next(pos)
 		if toks.Len() == 0 {
 			log.Fatal("ran out of chain at", pos)
 		}
