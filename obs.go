@@ -10,15 +10,33 @@ type trigrams struct {
 	fwd, rev obs2
 }
 
-func (t *trigrams) Observe(ctx bigram, tok2 token) (had2, had3 bool) {
-	had2, had3 = t.fwd.Observe(ctx, tok2)
+func (t trigrams) Observe(tok0, tok1, tok2 token) (had2, had3 bool) {
+	ctx := bigram{tok0, tok1}
 
-	if !had3 {
-		ctx.tok0, tok2 = tok2, ctx.tok0
-		t.rev.Observe(ctx, tok2)
+	chain, had2 := t.fwd[ctx]
+	if !had2 {
+		chain = &tokset{}
+		t.fwd[ctx] = chain
+	}
+
+	if had3 := chain.Add(tok2); !had3 {
+		t.ObserveRev(tok2, tok1, tok0)
+		return had2, false
 	}
 
 	return had2, had3
+}
+
+func (t trigrams) ObserveRev(tok0, tok1, tok2 token) {
+	ctx := bigram{tok0, tok1}
+
+	chain, had2 := t.rev[ctx]
+	if !had2 {
+		chain = &tokset{}
+		t.rev[ctx] = chain
+	}
+
+	chain.Add(tok2)
 }
 
 func (t *trigrams) Fwd(ctx bigram) *tokset {

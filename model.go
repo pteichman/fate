@@ -94,10 +94,24 @@ func (m *Model) Learn(text string) {
 	}
 
 	m.lock.Lock()
-	iter := newCtxiter(text, m.startTok, m.endTok, m.tokens.ID)
-	for iter.next() {
-		m.observe(iter.trigram())
+	start, end := m.startTok, m.endTok
+
+	var (
+		tok0 token = start
+		tok1 token = start
+		tok2 token = 0
+	)
+
+	iter := newWords(text)
+	for iter.Next() {
+		tok2 = m.tokens.ID(iter.Word())
+		m.observe(tok0, tok1, tok2)
+		tok0, tok1 = tok1, tok2
 	}
+
+	m.observe(tok0, tok1, end)
+	m.observe(tok1, end, end)
+
 	m.lock.Unlock()
 }
 
@@ -119,13 +133,10 @@ func learnable(s string) bool {
 	return false
 }
 
-func (m *Model) observe(ctx bigram, tok token) {
+func (m *Model) observe(tok0, tok1, tok2 token) {
 	// Observe the trigram: (tok0, tok1, tok2).
-	old2, _ := m.tri.Observe(ctx, tok)
-	if !old2 {
-		// If the bigram was new, observe that in fwd1.
-		m.fwd1.Observe(ctx.tok0, ctx.tok1)
-	}
+	m.tri.Observe(tok0, tok1, tok2)
+	m.fwd1.Observe(tok0, tok1)
 }
 
 // Reply generates a reply string to str, given the current state of
