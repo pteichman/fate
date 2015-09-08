@@ -24,27 +24,10 @@ type tokset struct {
 func (t *tokset) Add(tok token) bool {
 	switch {
 	case tok <= 0xFF:
-		if len(t.buf) == 0 {
-			t.buf = append(t.buf, byte(tok))
-			t.c1++
-			return false
-		}
-
 		return t.add1(tok)
 	case tok <= 0xFFFF:
-		if len(t.buf) == 0 {
-			t.buf = append(t.buf, byte(tok), byte(tok>>8))
-			t.c2++
-			return false
-		}
-
 		return t.add2(tok)
 	case tok <= 0xFFFFFF:
-		if len(t.buf) == 0 {
-			t.buf = append(t.buf, byte(tok), byte(tok>>8), byte(tok>>16))
-			return false
-		}
-
 		return t.add3(tok)
 	}
 
@@ -64,6 +47,12 @@ func (t *tokset) span3() []byte {
 }
 
 func (t *tokset) add1(tok token) bool {
+	if len(t.buf) == 0 {
+		t.buf = append(t.buf, byte(tok))
+		t.c1++
+		return false
+	}
+
 	span := t.span1()
 	loc := sort.Search(len(span), func(i int) bool {
 		return token(span[i]) >= tok
@@ -83,6 +72,12 @@ func (t *tokset) add1(tok token) bool {
 }
 
 func (t *tokset) add2(tok token) bool {
+	if len(t.buf) == 0 {
+		t.buf = append(t.buf, byte(tok), byte(tok>>8))
+		t.c2++
+		return false
+	}
+
 	span := t.span2()
 	idx := sort.Search(len(span)/2, func(i int) bool {
 		return unpack2(span[2*i:]) >= tok
@@ -103,6 +98,11 @@ func (t *tokset) add2(tok token) bool {
 	return false
 }
 func (t *tokset) add3(tok token) bool {
+	if len(t.buf) == 0 {
+		t.buf = append(t.buf, byte(tok), byte(tok>>8), byte(tok>>16))
+		return false
+	}
+
 	span := t.span3()
 	idx := sort.Search(len(span)/3, func(i int) bool {
 		return unpack3(span[3*i:]) >= tok
