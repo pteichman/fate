@@ -156,13 +156,14 @@ func (m *Model) observe(tok0, tok1, tok2, tok3 token) {
 // string.
 func (m *Model) Reply(text string) string {
 	m.lock.RLock()
+	defer m.lock.RUnlock()
+
 	if m.tokens.Len() <= 2 {
 		return ""
 	}
 
 	tokens := m.conflate(strings.Fields(text))
 	reply := join(m.tokens, m.replyTokens(tokens, &prng{m.rand.Next()}))
-	m.lock.RUnlock()
 
 	return reply
 }
