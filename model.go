@@ -32,7 +32,7 @@ type Model struct {
 	// forward direction, so we can efficiently choose random
 	// tok0-containing contexts. In the reverse direction, we
 	// only need to be able to track (tok2 tok1 -> tok0).
-	fwd1 obs1
+	bi bigrams
 
 	tri trigrams
 
@@ -77,8 +77,8 @@ func NewModel(opts Config) *Model {
 		startTok: tokens.ID("<S>"),
 		endTok:   tokens.ID("</S>"),
 
-		fwd1: make(obs1),
-		tri:  make(trigrams),
+		bi:  make(bigrams),
+		tri: make(trigrams),
 
 		lock: &sync.RWMutex{},
 		rand: &prng{uint64(seed)},
@@ -147,7 +147,7 @@ func learnable(s string) bool {
 func (m *Model) observe(tok0, tok1, tok2, tok3 token) {
 	// Observe the trigram: (tok0, tok1, tok2).
 	if !m.tri.Observe(tok0, tok1, tok2, tok3) {
-		m.fwd1.Observe(tok1, tok2)
+		m.bi.Observe(tok1, tok2)
 	}
 }
 
@@ -176,7 +176,7 @@ func (m *Model) replyTokens(tokens []token, intn Intn) []token {
 		pivot = token(intn.Intn(m.tokens.Len()-2) + 2)
 	}
 
-	fwdctx := bigram{tok0: pivot, tok1: choice(m.fwd1[pivot], intn)}
+	fwdctx := bigram{tok0: pivot, tok1: m.bi[pivot].Choice(intn)}
 
 	start, end := m.startTok, m.endTok
 

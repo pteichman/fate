@@ -1,9 +1,14 @@
 package fate
 
-type obs1 map[token][]token
+type bigrams map[token]*tokset
 
-func (o obs1) Observe(tok0 token, tok1 token) {
-	o[tok0] = append(o[tok0], tok1)
+func (b bigrams) Observe(tok0 token, tok1 token) {
+	ctx, ok := b[tok0]
+	if !ok {
+		ctx = &tokset{}
+		b[tok0] = ctx
+	}
+	ctx.Add(tok1)
 }
 
 type fwdrev struct {
