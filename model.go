@@ -93,7 +93,6 @@ func (m *Model) Learn(text string) {
 		return
 	}
 
-	m.lock.Lock()
 	start, end := m.startTok, m.endTok
 
 	// Maintain a four-token sliding window. This allows us to learn
@@ -107,6 +106,8 @@ func (m *Model) Learn(text string) {
 	)
 
 	iter := newWords(text)
+
+	m.lock.Lock()
 	for iter.Next() {
 		tok3 = m.tokens.ID(iter.Word())
 		m.observe(tok0, tok1, tok2, tok3)
