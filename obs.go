@@ -40,19 +40,3 @@ func (t trigrams) Fwd(ctx bigram) *tokset {
 func (t trigrams) Rev(ctx bigram) *tokset {
 	return t[ctx].rev
 }
-
-type obs2 map[bigram]*tokset
-
-func (o obs2) Observe(ctx bigram, tok2 token) (had2, had3 bool) {
-	set, had2 := o[ctx]
-	if !had2 {
-		set = &tokset{}
-		o[ctx] = set
-	}
-
-	if had3 := set.Add(tok2); !had3 {
-		return had2, false
-	}
-
-	return had2, true
-}
