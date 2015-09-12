@@ -171,21 +171,23 @@ func unpack3(buf []byte) token {
 	return token(buf[0]) | token(buf[1])<<8 | token(buf[2])<<16
 }
 
-func (t tokset) Choice(r Intn) token {
-	index := r.Intn(t.Len())
-
+func (t tokset) Index(n int) token {
 	switch {
-	case index < int(t.c1):
-		return token(t.buf[index])
-	case index < int(t.c1)+int(t.c2):
+	case n < int(t.c1):
+		return token(t.buf[n])
+	case n < int(t.c1)+int(t.c2):
 		span := t.span2()
-		return unpack2(span[2*(index-int(t.c1)):])
-	case index < t.Len():
+		return unpack2(span[2*(n-int(t.c1)):])
+	case n < t.Len():
 		span := t.span3()
-		return unpack3(span[3*(index-(int(t.c2)+int(t.c1))):])
+		return unpack3(span[3*(n-(int(t.c2)+int(t.c1))):])
 	}
 
 	panic("oops")
+}
+
+func (t tokset) Choice(r Intn) token {
+	return t.Index(r.Intn(t.Len()))
 }
 
 // tokset2 stores constant width tokens in a sorted slice.
