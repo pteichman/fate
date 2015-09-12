@@ -34,7 +34,7 @@ type Model struct {
 	// only need to be able to track (tok2 tok1 -> tok0).
 	fwd1 obs1
 
-	tri *trigrams
+	tri trigrams
 
 	lock *sync.RWMutex
 	rand *prng
@@ -78,7 +78,7 @@ func NewModel(opts Config) *Model {
 		endTok:   tokens.ID("</S>"),
 
 		fwd1: make(obs1),
-		tri:  &trigrams{make(obs2), make(obs2)},
+		tri:  make(trigrams),
 
 		lock: &sync.RWMutex{},
 		rand: &prng{uint64(seed)},
@@ -96,21 +96,31 @@ func (m *Model) Learn(text string) {
 	m.lock.Lock()
 	start, end := m.startTok, m.endTok
 
+	// Maintain a four-token sliding window. This allows us to learn
+	// both the forward and reverse directions from the {tok1, tok2}
+	// bigram at the same time.
 	var (
 		tok0 token = start
 		tok1 token = start
-		tok2 token = 0
+		tok2 token = start
+		tok3 token = 0
 	)
 
 	iter := newWords(text)
 	for iter.Next() {
-		tok2 = m.tokens.ID(iter.Word())
-		m.observe(tok0, tok1, tok2)
-		tok0, tok1 = tok1, tok2
+		tok3 = m.tokens.ID(iter.Word())
+		m.observe(tok0, tok1, tok2, tok3)
+		tok0, tok1, tok2 = tok1, tok2, tok3
 	}
 
-	m.observe(tok0, tok1, end)
-	m.observe(tok1, end, end)
+	// Have: tok0=foo tok1=bar tok2=baz
+	// Want: foo bar baz </S>
+	//       bar baz </S> </S>
+	//       baz </S> </S> </S>
+
+	m.observe(tok0, tok1, tok2, end)
+	m.observe(tok1, tok2, end, end)
+	m.observe(tok2, end, end, end)
 
 	m.lock.Unlock()
 }
@@ -133,10 +143,11 @@ func learnable(s string) bool {
 	return false
 }
 
-func (m *Model) observe(tok0, tok1, tok2 token) {
+func (m *Model) observe(tok0, tok1, tok2, tok3 token) {
 	// Observe the trigram: (tok0, tok1, tok2).
-	m.tri.Observe(tok0, tok1, tok2)
-	m.fwd1.Observe(tok0, tok1)
+	if !m.tri.Observe(tok0, tok1, tok2, tok3) {
+		m.fwd1.Observe(tok1, tok2)
+	}
 }
 
 // Reply generates a reply string to str, given the current state of
@@ -172,7 +183,7 @@ func (m *Model) replyTokens(tokens []token, intn Intn) []token {
 
 	// Compute the beginning of the sentence by walking from
 	// fwdctx back to start.
-	path = m.follow(path, m.tri.Rev, fwdctx.reverse(), start)
+	path = m.followrev(path, m.tri, fwdctx, start)
 
 	// Reverse what we have so far.
 	reverse(path)
@@ -189,7 +200,7 @@ func (m *Model) replyTokens(tokens []token, intn Intn) []token {
 
 		// Compute the end of the sentence by walking forward
 		// from fwdctx to end.
-		path = m.follow(path, m.tri.Fwd, fwdctx, end)
+		path = m.followfwd(path, m.tri, fwdctx, end)
 	}
 
 	return path
@@ -219,9 +230,9 @@ func in(haystack []token, needle token) bool {
 	return false
 }
 
-func (m *Model) follow(path []token, next func(bigram) *tokset, pos bigram, goal token) []token {
+func (m *Model) followfwd(path []token, tri trigrams, pos bigram, goal token) []token {
 	for {
-		toks := next(pos)
+		toks := tri.Fwd(pos)
 		if toks.Len() == 0 {
 			log.Fatal("ran out of chain at", pos)
 		}
@@ -233,6 +244,23 @@ func (m *Model) follow(path []token, next func(bigram) *tokset, pos bigram, goal
 
 		path = append(path, tok)
 		pos.tok0, pos.tok1 = pos.tok1, tok
+	}
+}
+
+func (m *Model) followrev(path []token, tri trigrams, pos bigram, goal token) []token {
+	for {
+		toks := tri.Rev(pos)
+		if toks.Len() == 0 {
+			log.Fatal("ran out of chain at", pos)
+		}
+
+		tok := toks.Choice(m.rand)
+		if tok == goal {
+			return path
+		}
+
+		path = append(path, tok)
+		pos.tok0, pos.tok1 = tok, pos.tok0
 	}
 }
 

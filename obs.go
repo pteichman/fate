@@ -6,45 +6,34 @@ func (o obs1) Observe(tok0 token, tok1 token) {
 	o[tok0] = append(o[tok0], tok1)
 }
 
-type trigrams struct {
-	fwd, rev obs2
+type fwdrev struct {
+	fwd *tokset
+	rev *tokset
 }
 
-func (t trigrams) Observe(tok0, tok1, tok2 token) (had2, had3 bool) {
-	ctx := bigram{tok0, tok1}
+type trigrams map[bigram]*fwdrev
 
-	chain, had2 := t.fwd[ctx]
+func (t trigrams) Observe(tok0, tok1, tok2, tok3 token) (had2 bool) {
+	ctx := bigram{tok1, tok2}
+
+	chain, had2 := t[ctx]
 	if !had2 {
-		chain = &tokset{}
-		t.fwd[ctx] = chain
+		chain = &fwdrev{&tokset{}, &tokset{}}
+		t[ctx] = chain
 	}
 
-	if had3 := chain.Add(tok2); !had3 {
-		t.ObserveRev(tok2, tok1, tok0)
-		return had2, false
-	}
+	chain.fwd.Add(tok3)
+	chain.rev.Add(tok0)
 
-	return had2, had3
+	return had2
 }
 
-func (t trigrams) ObserveRev(tok0, tok1, tok2 token) {
-	ctx := bigram{tok0, tok1}
-
-	chain, had2 := t.rev[ctx]
-	if !had2 {
-		chain = &tokset{}
-		t.rev[ctx] = chain
-	}
-
-	chain.Add(tok2)
+func (t trigrams) Fwd(ctx bigram) *tokset {
+	return t[ctx].fwd
 }
 
-func (t *trigrams) Fwd(ctx bigram) *tokset {
-	return t.fwd[ctx]
-}
-
-func (t *trigrams) Rev(ctx bigram) *tokset {
-	return t.rev[ctx]
+func (t trigrams) Rev(ctx bigram) *tokset {
+	return t[ctx].rev
 }
 
 type obs2 map[bigram]*tokset
