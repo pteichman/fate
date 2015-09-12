@@ -74,7 +74,9 @@ func BenchmarkLearn(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		model.Learn(sentences[i%len(sentences)])
+		sen := sentences[i%len(sentences)]
+		model.Learn(sen)
+		b.SetBytes(int64(len(sen)))
 	}
 }
 
@@ -110,7 +112,9 @@ func BenchmarkLearnParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			j := atomic.AddInt32(&i, 1)
-			model.Learn(sentences[int(j)%len(sentences)])
+			sen := sentences[int(j)%len(sentences)]
+			model.Learn(sen)
+			b.SetBytes(int64(len(sen)))
 		}
 	})
 }
