@@ -27,9 +27,9 @@ func quoterunes(s string) []quoterune {
 		if r == '"' {
 			dir := direction(s, i)
 			ret = append(ret, quoterune{dir, r})
-		} else if r == '(' || r == '{' || r == '[' {
+		} else if r == '(' || r == '{' || r == '[' || r == '“' {
 			ret = append(ret, quoterune{Open, r})
-		} else if r == ')' || r == '}' || r == ']' {
+		} else if r == ')' || r == '}' || r == ']' || r == '”' {
 			ret = append(ret, quoterune{Close, r})
 		} else {
 			ret = append(ret, quoterune{Literal, r})
@@ -161,6 +161,10 @@ func mirror(r rune) rune {
 		r = '['
 	case '"':
 		r = '"'
+	case '“':
+		r = '”'
+	case '”':
+		r = '“'
 	default:
 	}
 
