@@ -2,7 +2,7 @@ package fate
 
 import "sync/atomic"
 
-type Intn interface {
+type intn interface {
 	Intn(n int) int
 }
 

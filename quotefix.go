@@ -4,6 +4,7 @@ package fate
 // Since fate's tokenizer splits only on spaces, replies often contain
 // unmatched quotes or parentheses.
 
+// QuoteFix automatically balances quotes/parens/etc in text strings.
 func QuoteFix(s string) string {
 	return flatten(fixrev(fixfwd(quoterunes(s))))
 }
@@ -11,9 +12,9 @@ func QuoteFix(s string) string {
 type quotetype int
 
 const (
-	Literal quotetype = iota
-	Open
-	Close
+	literal quotetype = iota
+	open
+	close
 )
 
 type quoterune struct {
@@ -28,11 +29,11 @@ func quoterunes(s string) []quoterune {
 			dir := direction(s, i)
 			ret = append(ret, quoterune{dir, r})
 		} else if r == '(' || r == '{' || r == '[' || r == '“' {
-			ret = append(ret, quoterune{Open, r})
+			ret = append(ret, quoterune{open, r})
 		} else if r == ')' || r == '}' || r == ']' || r == '”' {
-			ret = append(ret, quoterune{Close, r})
+			ret = append(ret, quoterune{close, r})
 		} else {
-			ret = append(ret, quoterune{Literal, r})
+			ret = append(ret, quoterune{literal, r})
 		}
 	}
 
@@ -60,10 +61,10 @@ func direction(s string, pos int) quotetype {
 	}
 
 	if (pos - start) < (end - pos) {
-		return Open
+		return open
 	}
 
-	return Close
+	return close
 }
 
 func pop(runes []rune) ([]rune, rune) {
@@ -79,19 +80,19 @@ func flatten(tokens []quoterune) string {
 	return string(ret)
 }
 
-// fixfwd inserts Close tokens for unmatched Opens.
+// fixfwd inserts close tokens for unmatched opens.
 func fixfwd(tokens []quoterune) []quoterune {
 	var stack []rune
 	var prev rune
 
 	var ret []quoterune
 	for _, t := range tokens {
-		if t.t == Open {
+		if t.t == open {
 			stack = append(stack, t.r)
-		} else if len(stack) > 0 && t.t == Close {
+		} else if len(stack) > 0 && t.t == close {
 			stack, prev = pop(stack)
 			if prev != mirror(t.r) {
-				ret = append(ret, quoterune{Close, mirror(t.r)})
+				ret = append(ret, quoterune{close, mirror(t.r)})
 			}
 		}
 
@@ -100,13 +101,13 @@ func fixfwd(tokens []quoterune) []quoterune {
 
 	for len(stack) > 0 {
 		stack, prev = pop(stack)
-		ret = append(ret, quoterune{Close, mirror(prev)})
+		ret = append(ret, quoterune{close, mirror(prev)})
 	}
 
 	return ret
 }
 
-// fixrev inserts Open tokens for unmatched Closes.
+// fixrev inserts open tokens for unmatched closes.
 func fixrev(tokens []quoterune) []quoterune {
 	var stack []rune
 	var prev rune
@@ -114,12 +115,12 @@ func fixrev(tokens []quoterune) []quoterune {
 	var ret []quoterune
 	for i := len(tokens) - 1; i >= 0; i-- {
 		t := tokens[i]
-		if t.t == Close {
+		if t.t == close {
 			stack = append(stack, t.r)
-		} else if len(stack) > 0 && t.t == Open {
+		} else if len(stack) > 0 && t.t == open {
 			stack, prev = pop(stack)
 			if prev != mirror(t.r) {
-				ret = append(ret, quoterune{Open, mirror(t.r)})
+				ret = append(ret, quoterune{open, mirror(t.r)})
 			}
 		}
 
@@ -128,7 +129,7 @@ func fixrev(tokens []quoterune) []quoterune {
 
 	for len(stack) > 0 {
 		stack, prev = pop(stack)
-		ret = append(ret, quoterune{Open, mirror(prev)})
+		ret = append(ret, quoterune{open, mirror(prev)})
 	}
 
 	reverserunes(ret)

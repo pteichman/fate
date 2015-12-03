@@ -186,7 +186,7 @@ func (t tokset) Index(n int) token {
 	panic("oops")
 }
 
-func (t tokset) Choice(r Intn) token {
+func (t tokset) Choice(r intn) token {
 	return t.Index(r.Intn(t.Len()))
 }
 

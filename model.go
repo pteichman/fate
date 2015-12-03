@@ -168,16 +168,16 @@ func (m *Model) Reply(text string) string {
 	return reply
 }
 
-func (m *Model) replyTokens(tokens []token, intn Intn) []token {
+func (m *Model) replyTokens(tokens []token, r intn) []token {
 	var pivot token
 	if len(tokens) > 0 {
-		pivot = choice(tokens, intn)
+		pivot = choice(tokens, r)
 	} else {
 		// Babble. Assume tokens 0 & 1 are start and end.
-		pivot = token(intn.Intn(m.tokens.Len()-2) + 2)
+		pivot = token(r.Intn(m.tokens.Len()-2) + 2)
 	}
 
-	fwdctx := bigram{tok0: pivot, tok1: m.bi[pivot].Choice(intn)}
+	fwdctx := bigram{tok0: pivot, tok1: m.bi[pivot].Choice(r)}
 
 	start, end := m.startTok, m.endTok
 
@@ -301,6 +301,6 @@ func joinsize(tokens *syndict, path []token) int {
 	return count
 }
 
-func choice(toks []token, intn Intn) token {
-	return toks[intn.Intn(len(toks))]
+func choice(toks []token, r intn) token {
+	return toks[r.Intn(len(toks))]
 }
