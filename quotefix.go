@@ -1,6 +1,12 @@
 package fate
 
-import "fmt"
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // These functions automatically balance quotes/parens/etc in strings.
 // Since fate's tokenizer splits only on spaces, replies often contain
@@ -8,7 +14,25 @@ import "fmt"
 
 // QuoteFix automatically balances quotes/parens/etc in text strings.
 func QuoteFix(s string) string {
-	return flatten(fixrev(fixfwd(quoterunes(s))))
+	var qr []quoterune
+
+	iter := newTokiter(s)
+	for iter.Next() {
+		tok := iter.Token()
+		if candidate(tok) {
+			qr = append(qr, quoterunes(tok)...)
+		} else {
+			qr = append(qr, literals(tok)...)
+		}
+	}
+
+	return flatten(fixrev(fixfwd(qr)))
+}
+
+var isEmoticon = regexp.MustCompile(`:-*[\(\)]+`)
+
+func candidate(tok string) bool {
+	return !isEmoticon.MatchString(tok)
 }
 
 type quotetype int
@@ -39,6 +63,55 @@ type quoterune struct {
 
 func (qr quoterune) String() string {
 	return fmt.Sprintf("{ %v %v }", qr.t, string(qr.r))
+}
+
+type tokiter struct {
+	s   string
+	tok string
+}
+
+func newTokiter(s string) *tokiter {
+	return &tokiter{s, ""}
+}
+
+func (ti *tokiter) Next() bool {
+	ti.s = ti.s[len(ti.tok):]
+	if len(ti.s) == 0 {
+		return false
+	}
+
+	notSpace := func(r rune) bool {
+		return !unicode.IsSpace(r)
+	}
+
+	var end int
+
+	first, _ := utf8.DecodeRuneInString(ti.s)
+	if unicode.IsSpace(first) {
+		end = strings.IndexFunc(ti.s, notSpace)
+	} else {
+		end = strings.IndexFunc(ti.s, unicode.IsSpace)
+	}
+
+	if end == -1 {
+		end = len(ti.s)
+	}
+
+	ti.tok = ti.s[:end]
+
+	return true
+}
+
+func (ti *tokiter) Token() string {
+	return ti.tok
+}
+
+func literals(s string) []quoterune {
+	var ret []quoterune
+	for _, r := range s {
+		ret = append(ret, quoterune{literal, r})
+	}
+	return ret
 }
 
 func quoterunes(s string) []quoterune {
