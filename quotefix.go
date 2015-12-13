@@ -29,7 +29,7 @@ func QuoteFix(s string) string {
 	return flatten(fixrev(fixfwd(qr)))
 }
 
-var isEmoticon = regexp.MustCompile(`:-*[\(\)]+`)
+var isEmoticon = regexp.MustCompile(`[:;]-*[\(\)]+`)
 
 func candidate(tok string) bool {
 	return !isEmoticon.MatchString(tok)
