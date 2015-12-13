@@ -1,5 +1,7 @@
 package fate
 
+import "fmt"
+
 // These functions automatically balance quotes/parens/etc in strings.
 // Since fate's tokenizer splits only on spaces, replies often contain
 // unmatched quotes or parentheses.
@@ -17,9 +19,26 @@ const (
 	close
 )
 
+func (qt quotetype) String() string {
+	switch qt {
+	case literal:
+		return "literal"
+	case open:
+		return "open"
+	case close:
+		return "close"
+	default:
+		return "none"
+	}
+}
+
 type quoterune struct {
 	t quotetype
 	r rune
+}
+
+func (qr quoterune) String() string {
+	return fmt.Sprintf("{ %v %v }", qr.t, string(qr.r))
 }
 
 func quoterunes(s string) []quoterune {
@@ -92,7 +111,7 @@ func fixfwd(tokens []quoterune) []quoterune {
 		} else if len(stack) > 0 && t.t == close {
 			stack, prev = pop(stack)
 			if prev != mirror(t.r) {
-				ret = append(ret, quoterune{close, mirror(t.r)})
+				ret = append(ret, quoterune{close, mirror(prev)})
 			}
 		}
 
@@ -120,7 +139,7 @@ func fixrev(tokens []quoterune) []quoterune {
 		} else if len(stack) > 0 && t.t == open {
 			stack, prev = pop(stack)
 			if prev != mirror(t.r) {
-				ret = append(ret, quoterune{open, mirror(t.r)})
+				ret = append(ret, quoterune{open, mirror(prev)})
 			}
 		}
 

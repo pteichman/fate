@@ -13,6 +13,7 @@ func TestQuoteFix(t *testing.T) {
 		{"this)) is ((a test)", "((this)) is ((a test))"},
 		{"this]) is ((a test)", "([this]) is ((a test))"},
 		{"this” is “a test”", "“this” is “a test”"},
+		{"(this is a test\"", "\"(this is a test)\""},
 	}
 
 	for _, tt := range tests {
