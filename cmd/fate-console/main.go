@@ -11,6 +11,8 @@ import (
 	"github.com/pteichman/fate"
 )
 
+var historyFn = ".fate_console"
+
 func main() {
 	flag.Parse()
 
@@ -32,7 +34,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	chat(model)
+	console := liner.NewLiner()
+	console.SetCtrlCAborts(true)
+	defer console.Close()
+
+	hist := path.Join(os.Getenv("HOME"), historyFn)
+	if hist != historyFn {
+		loadHistory(console, hist)
+	}
+
+	var err error
+	for err == nil {
+		var line string
+		line, err = console.Prompt("> ")
+		if err != nil {
+			break
+		}
+
+		if line != "" {
+			console.AppendHistory(line)
+		}
+
+		fmt.Println(model.Reply(line))
+	}
+
+	if hist != historyFn {
+		saveHistory(console, hist)
+	}
 }
 
 func learnFile(m *fate.Model, path string) error {
@@ -49,68 +77,26 @@ func learnFile(m *fate.Model, path string) error {
 	return s.Err()
 }
 
-func chat(m *fate.Model) {
-	line := liner.NewLiner()
-	defer line.Close()
-
-	history := loadHistory(line)
-
-	for {
-		if err := chatOnce(m, line); err != nil {
-			break
-		}
-	}
-
-	if history != "" {
-		saveHistory(history, line)
-	}
-}
-
-func chatOnce(m *fate.Model, console *liner.State) error {
-	line, err := console.Prompt("> ")
-	if err != nil {
-		return err
-	}
-
-	if line != "" {
-		console.AppendHistory(line)
-	}
-
-	fmt.Println(m.Reply(line))
-
-	return nil
-}
-
-func loadHistory(line *liner.State) string {
-	home := os.Getenv("HOME")
-	if home == "" {
-		return home
-	}
-
-	history := path.Join(home, ".fate_history")
-
-	fd, err := os.Open(history)
+func loadHistory(console *liner.State, filename string) {
+	f, err := os.Open(filename)
 	if err != nil {
 		fmt.Println(err)
-		return history
+		return
 	}
 
-	line.ReadHistory(fd)
-	fd.Close()
-
-	return history
+	console.ReadHistory(f)
+	f.Close()
 }
 
-func saveHistory(filename string, console *liner.State) error {
+func saveHistory(console *liner.State, filename string) {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return err
+		fmt.Println(err)
+		return
 	}
 
 	_, err = console.WriteHistory(f)
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	return err
 }
