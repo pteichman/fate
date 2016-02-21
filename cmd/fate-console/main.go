@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/GeertJohan/go.linenoise"
+	"github.com/peterh/liner"
 	"github.com/pteichman/fate"
 )
 
@@ -50,27 +50,30 @@ func learnFile(m *fate.Model, path string) error {
 }
 
 func chat(m *fate.Model) {
-	history := loadHistory()
+	line := liner.NewLiner()
+	defer line.Close()
+
+	history := loadHistory(line)
 
 	for {
-		if err := chatOnce(m); err != nil {
+		if err := chatOnce(m, line); err != nil {
 			break
 		}
 	}
 
 	if history != "" {
-		saveHistory(history)
+		saveHistory(history, line)
 	}
 }
 
-func chatOnce(m *fate.Model) error {
-	line, err := linenoise.Line("> ")
+func chatOnce(m *fate.Model, console *liner.State) error {
+	line, err := console.Prompt("> ")
 	if err != nil {
 		return err
 	}
 
 	if line != "" {
-		linenoise.AddHistory(line)
+		console.AppendHistory(line)
 	}
 
 	fmt.Println(m.Reply(line))
@@ -78,7 +81,7 @@ func chatOnce(m *fate.Model) error {
 	return nil
 }
 
-func loadHistory() string {
+func loadHistory(line *liner.State) string {
 	home := os.Getenv("HOME")
 	if home == "" {
 		return home
@@ -86,16 +89,25 @@ func loadHistory() string {
 
 	history := path.Join(home, ".fate_history")
 
-	err := linenoise.LoadHistory(history)
+	fd, err := os.Open(history)
 	if err != nil {
 		fmt.Println(err)
+		return history
 	}
+
+	line.ReadHistory(fd)
+	fd.Close()
 
 	return history
 }
 
-func saveHistory(filename string) error {
-	err := linenoise.SaveHistory(filename)
+func saveHistory(filename string, console *liner.State) error {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+
+	_, err = console.WriteHistory(f)
 	if err != nil {
 		fmt.Println(err)
 	}
