@@ -12,8 +12,8 @@ func (b bigrams) Observe(tok0 token, tok1 token) {
 }
 
 type fwdrev struct {
-	fwd *tokset
-	rev *tokset
+	fwd tokset
+	rev tokset
 }
 
 type trigrams map[bigram]*fwdrev
@@ -23,7 +23,7 @@ func (t trigrams) Observe(tok0, tok1, tok2, tok3 token) (had2 bool) {
 
 	chain, had2 := t[ctx]
 	if !had2 {
-		chain = &fwdrev{&tokset{}, &tokset{}}
+		chain = &fwdrev{}
 		t[ctx] = chain
 	}
 
@@ -34,9 +34,9 @@ func (t trigrams) Observe(tok0, tok1, tok2, tok3 token) (had2 bool) {
 }
 
 func (t trigrams) Fwd(ctx bigram) *tokset {
-	return t[ctx].fwd
+	return &(t[ctx].fwd)
 }
 
 func (t trigrams) Rev(ctx bigram) *tokset {
-	return t[ctx].rev
+	return &(t[ctx].rev)
 }
