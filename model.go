@@ -4,6 +4,7 @@ package fate
 import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"expvar"
 	"log"
 	"math/rand"
 	"strings"
@@ -20,6 +21,10 @@ type bigram struct {
 func (b bigram) reverse() bigram {
 	return bigram{b.tok1, b.tok0}
 }
+
+var (
+	stats = expvar.NewMap("fate")
+)
 
 // Model is a trigram language model that can learn and respond to
 // text.
@@ -123,6 +128,8 @@ func (m *Model) Learn(text string) {
 	m.observe(tok1, tok2, end, end)
 	m.observe(tok2, end, end, end)
 
+	stats.Add("Learned", 1)
+
 	m.lock.Unlock()
 }
 
@@ -164,6 +171,8 @@ func (m *Model) Reply(text string) string {
 
 	tokens := m.conflate(strings.Fields(text))
 	reply := join(m.tokens, m.replyTokens(tokens, &prng{m.rand.Next()}))
+
+	stats.Add("Replied", 1)
 
 	return reply
 }

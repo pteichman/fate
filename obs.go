@@ -7,6 +7,7 @@ func (b bigrams) Observe(tok0 token, tok1 token) {
 	if !ok {
 		ctx = &tokset{}
 		b[tok0] = ctx
+		stats.Add("TokenLearned", 1)
 	}
 	ctx.Add(tok1)
 }
@@ -25,9 +26,13 @@ func (t trigrams) Observe(tok0, tok1, tok2, tok3 token) (had2 bool) {
 	if !had2 {
 		chain = &fwdrev{}
 		t[ctx] = chain
+		stats.Add("BigramLearned", 1)
 	}
 
-	chain.fwd.Add(tok3)
+	if !chain.fwd.Add(tok3) {
+		stats.Add("TrigramLearned", 1)
+	}
+
 	chain.rev.Add(tok0)
 
 	return had2
