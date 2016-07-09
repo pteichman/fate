@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/peterh/liner"
 	"github.com/pteichman/fate"
@@ -14,6 +15,11 @@ import (
 var historyFn = ".fate_console"
 
 func main() {
+	var (
+		maxlen int
+	)
+
+	flag.IntVar(&maxlen, "maxlen", 0, "maximum length for reply in UTF-8 chars")
 	flag.Parse()
 
 	model := fate.NewModel(fate.Config{})
@@ -43,11 +49,11 @@ func main() {
 		loadHistory(console, hist)
 	}
 
-	var err error
-	for err == nil {
-		var line string
-		line, err = console.Prompt("> ")
+loop:
+	for {
+		line, err := console.Prompt("> ")
 		if err != nil {
+			fmt.Println()
 			break
 		}
 
@@ -55,7 +61,21 @@ func main() {
 			console.AppendHistory(line)
 		}
 
-		fmt.Println(model.Reply(line))
+		timeout := time.After(time.Second / 2)
+
+		reply := model.Reply(line)
+		for maxlen > 0 && len(reply) > maxlen {
+			reply = model.Reply(line)
+
+			select {
+			case <-timeout:
+				fmt.Println("ERROR: timed out")
+				continue loop
+			default:
+			}
+		}
+
+		fmt.Println(reply)
 	}
 
 	if hist != historyFn {
