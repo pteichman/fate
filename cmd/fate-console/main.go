@@ -79,8 +79,8 @@ func learnFile(m *fate.Model, path string) error {
 
 func loadHistory(console *liner.State, filename string) {
 	f, err := os.Open(filename)
-	if err != nil {
-		fmt.Println(err)
+	if err != nil && !os.IsNotExist(err) {
+		fmt.Printf("Reading %s: %s\n", filename, err)
 		return
 	}
 
