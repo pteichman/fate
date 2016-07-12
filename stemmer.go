@@ -13,12 +13,6 @@ type Stemmer interface {
 	Stem(string) string
 }
 
-type stemFunc func(string) string
-
-func (s stemFunc) Stem(str string) string {
-	return s(str)
-}
-
 // DefaultStemmer makes reply inputs insensitive to case, accents, and
 // punctuation.
 var DefaultStemmer = &cleaner{}
