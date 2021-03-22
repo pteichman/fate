@@ -26,5 +26,8 @@ func (r *prng) Next() uint64 {
 }
 
 func (r *prng) Intn(n int) int {
-	return int(r.Next()>>1) % n
+	// Clamp to uint32 to support 32-bit CPUs: this will silently
+	// fail to choose new things if there are ever 2^32 tokens in
+	// a tokset.
+	return int(uint32(r.Next()>>1) % uint32(n))
 }

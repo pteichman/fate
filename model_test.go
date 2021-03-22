@@ -49,11 +49,11 @@ func TestBabble(t *testing.T) {
 		reply := model.Reply("unknown")
 
 		if reply != text {
-			t.Errorf("Reply(this is a test) => %s, want %s", reply, text)
+			t.Fatalf("Reply(this is a test) => %s, want %s", reply, text)
 		}
 
 		if _, ok := model.tokens.CheckID("unknown"); ok {
-			t.Errorf("Reply(\"unknown\") registered token")
+			t.Fatalf("Reply(\"unknown\") registered token")
 		}
 	}
 }
