@@ -58,3 +58,13 @@ func BenchmarkToksetAdd(b *testing.B) {
 		ts.Add(token(rnd.Intn(100000)))
 	}
 }
+
+func BenchmarkBitmapAdd(b *testing.B) {
+	bm := NewBitmap()
+
+	rnd := rand.New(rand.NewSource(0))
+
+	for i := 0; i < b.N; i++ {
+		bm.Add(token(rnd.Intn(100000)))
+	}
+}
