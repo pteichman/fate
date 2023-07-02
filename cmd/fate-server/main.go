@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 	"time"
@@ -38,6 +39,7 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
+	log.Printf("Listening on %s", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
 }
 
