@@ -18,10 +18,6 @@ type bigram struct {
 	tok0, tok1 token
 }
 
-func (b bigram) reverse() bigram {
-	return bigram{b.tok1, b.tok0}
-}
-
 var (
 	stats = expvar.NewMap("fate")
 )
