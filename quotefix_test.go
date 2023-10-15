@@ -2,7 +2,7 @@ package fate
 
 import "testing"
 
-func TestQuoteFix(t *testing.T) {
+func TestQuoteFix_QuoteFix(t *testing.T) {
 	tests := []struct {
 		s        string
 		expected string

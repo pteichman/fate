@@ -1,13 +1,11 @@
 package fate
 
 import (
-	"bufio"
-	"os"
 	"strings"
 	"testing"
 )
 
-func TestReply(t *testing.T) {
+func TestModel_Reply(t *testing.T) {
 	model := NewModel(Config{})
 
 	text := "this is a test"
@@ -22,7 +20,7 @@ func TestReply(t *testing.T) {
 
 // TestConflate ensures an unlearned token isn't in conflate()
 // results, a learned one is regardless of how it's stemmed.
-func TestConflate(t *testing.T) {
+func TestModel_Conflate(t *testing.T) {
 	model := NewModel(Config{})
 
 	toks := model.conflate(strings.Fields("_"))
@@ -38,7 +36,7 @@ func TestConflate(t *testing.T) {
 	}
 }
 
-func TestBabble(t *testing.T) {
+func TestModel_Babble(t *testing.T) {
 	model := NewModel(Config{})
 
 	text := "this is a test"
@@ -58,7 +56,7 @@ func TestBabble(t *testing.T) {
 	}
 }
 
-func TestDuel(t *testing.T) {
+func TestModel_Duel(t *testing.T) {
 	model := NewModel(Config{})
 
 	model.Learn("this is a test")
@@ -73,7 +71,7 @@ func TestDuel(t *testing.T) {
 	}
 }
 
-func TestEmpty(t *testing.T) {
+func TestModel_Empty(t *testing.T) {
 	// Make sure Model doesn't panic when empty.
 	model := NewModel(Config{})
 
@@ -90,28 +88,12 @@ func TestEmpty(t *testing.T) {
 	}
 }
 
-func learnFile(m *Model, filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	s := bufio.NewScanner(file)
-	for s.Scan() {
-		m.Learn(s.Text())
-	}
-
-	return s.Err()
-}
-
-var quote = "On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question."
-
-// BenchmarkOverhead checks the constant overhead of learning
+// BenchmarkModel_Overhead checks the constant overhead of learning
 // already-learned trigrams.
-func BenchmarkOverhead(b *testing.B) {
-	m := NewModel(Config{})
+func BenchmarkModel_Overhead(b *testing.B) {
+	quote := "On two occasions I have been asked, 'Pray, Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question."
 
+	m := NewModel(Config{})
 	m.Learn(quote)
 
 	b.ReportAllocs()

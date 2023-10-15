@@ -2,7 +2,7 @@ package fate
 
 import "testing"
 
-func TestWords(t *testing.T) {
+func TestIter_Words(t *testing.T) {
 	var tests = []struct {
 		str      string
 		expected []string
@@ -21,13 +21,13 @@ func TestWords(t *testing.T) {
 			words = append(words, iter.Word())
 		}
 
-		if !StrsEqual(words, tt.expected) {
+		if !strsEqual(words, tt.expected) {
 			t.Errorf("Words(%v) -> %v, expected %v", tt.str, words, tt.expected)
 		}
 	}
 }
 
-func StrsEqual(a []string, b []string) bool {
+func strsEqual(a []string, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}

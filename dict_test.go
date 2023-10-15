@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestDict(t *testing.T) {
+func TestDict_ID(t *testing.T) {
 	var tests = []struct {
 		strs     []string
 		q        string
@@ -37,7 +37,7 @@ func toks(toks ...token) *tokset {
 	return ts
 }
 
-func TestSyndict(t *testing.T) {
+func TestDict_Syndict(t *testing.T) {
 	var tests = []struct {
 		strs     []string
 		query    string

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestAdd(t *testing.T) {
+func TestTokSet_Add(t *testing.T) {
 	var tests = []struct {
 		toks     []token
 		expected *tokset
@@ -27,7 +27,7 @@ func TestAdd(t *testing.T) {
 	}
 }
 
-func TestAddLarger(t *testing.T) {
+func TestTokSet_AddLarger(t *testing.T) {
 	var tests = []struct {
 		toks     []token
 		expected *tokset
@@ -49,7 +49,7 @@ func TestAddLarger(t *testing.T) {
 	}
 }
 
-func BenchmarkToksetAdd(b *testing.B) {
+func BenchmarkTokset_Add(b *testing.B) {
 	var ts tokset
 
 	rnd := rand.New(rand.NewSource(0))

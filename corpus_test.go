@@ -63,7 +63,7 @@ func sentence(words []string, n int) string {
 	return strings.Join(ret, " ")
 }
 
-func BenchmarkLearn(b *testing.B) {
+func BenchmarkCorpus_Learn(b *testing.B) {
 	sentences := corpus(vocab(100000), b.N, func() int {
 		return clamp(gauss(10, 5))
 	})
@@ -80,7 +80,7 @@ func BenchmarkLearn(b *testing.B) {
 	}
 }
 
-func BenchmarkReply(b *testing.B) {
+func BenchmarkCorpus_Reply(b *testing.B) {
 	sentences := corpus(vocab(100000), b.N, func() int {
 		return clamp(gauss(10, 5))
 	})
@@ -98,7 +98,7 @@ func BenchmarkReply(b *testing.B) {
 	}
 }
 
-func BenchmarkLearnParallel(b *testing.B) {
+func BenchmarkCorpus_LearnParallel(b *testing.B) {
 	sentences := corpus(vocab(100000), b.N, func() int {
 		return clamp(gauss(10, 5))
 	})
@@ -117,7 +117,7 @@ func BenchmarkLearnParallel(b *testing.B) {
 	})
 }
 
-func BenchmarkReplyParallel(b *testing.B) {
+func BenchmarkCorpus_ReplyParallel(b *testing.B) {
 	sentences := corpus(vocab(100000), b.N, func() int {
 		return clamp(gauss(10, 5))
 	})
