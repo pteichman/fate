@@ -37,13 +37,14 @@ func clamp(v float64) int {
 	return n
 }
 
-var runes = []rune("abcdefghijklmnopqrstuvwxyz")
-
 func randword(length int) string {
+	alpha := []rune("abcdefghijklmnopqrstuvwxyz")
+
 	var word = make([]rune, 0, length)
 	for i := 0; i < length; i++ {
-		word = append(word, runechoice(runes))
+		word = append(word, runechoice(alpha))
 	}
+
 	return string(word)
 }
 
