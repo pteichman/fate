@@ -4,6 +4,7 @@ import (
 	"strings"
 	"unicode"
 
+	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )
@@ -20,7 +21,7 @@ var DefaultStemmer = &cleaner{}
 type cleaner struct{}
 
 func (c *cleaner) Stem(s string) string {
-	tran := transform.Chain(norm.NFD, transform.RemoveFunc(isNonWord), norm.NFC)
+	tran := transform.Chain(norm.NFD, runes.Remove(runes.Predicate(isNonWord)), norm.NFC)
 	ret, _, err := transform.String(tran, strings.ToLower(s))
 	if err != nil {
 		return s
