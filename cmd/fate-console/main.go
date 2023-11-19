@@ -15,29 +15,34 @@ import (
 var historyFn = ".fate_console"
 
 func main() {
-	var (
-		maxlen int
-	)
-
-	flag.IntVar(&maxlen, "maxlen", 0, "maximum length for reply in UTF-8 chars")
+	writeFilename := flag.String("w", "", "write all learned inputs to this file")
+	maxlen := flag.Int("maxlen", 0, "maximum length for reply in UTF-8 chars")
 	flag.Parse()
 
 	model := fate.NewModel(fate.Config{})
 
-	var learned bool
-	for _, f := range flag.Args() {
+	var (
+		err       error
+		writeFile *os.File
+		toLearn   []string
+	)
+	if *writeFilename != "" {
+		toLearn = append(toLearn, *writeFilename)
+		writeFile, err = os.OpenFile(*writeFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Printf("Error: opening log: %v\n", err)
+			os.Exit(1)
+		}
+		defer writeFile.Close()
+	}
+	toLearn = append(toLearn, flag.Args()...)
+
+	for _, f := range toLearn {
 		err := learnFile(model, f)
 		if err != nil {
 			fmt.Printf("Error: %s\n", err)
 			continue
 		}
-
-		learned = true
-	}
-
-	if !learned {
-		fmt.Println("Usage: fate-console <text files>")
-		os.Exit(1)
 	}
 
 	console := liner.NewLiner()
@@ -59,12 +64,15 @@ loop:
 
 		if line != "" {
 			console.AppendHistory(line)
+			if writeFile != nil {
+				writeFile.WriteString(line + "\n")
+			}
 		}
 
 		timeout := time.After(time.Second / 2)
 
 		reply := model.Reply(line)
-		for maxlen > 0 && len(reply) > maxlen {
+		for *maxlen > 0 && len(reply) > *maxlen {
 			reply = model.Reply(line)
 
 			select {
