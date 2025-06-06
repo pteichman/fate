@@ -78,6 +78,7 @@ func (h handler) reply(w http.ResponseWriter, req *http.Request) {
 func (h handler) learn(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
 	}
 
 	q := req.FormValue("q")
