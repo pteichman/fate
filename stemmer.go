@@ -15,16 +15,13 @@ type Stemmer interface {
 
 // DefaultStemmer makes reply inputs insensitive to case, accents, and
 // punctuation.
-var DefaultStemmer = &cleaner{
-	transform: transform.Chain(norm.NFD, transform.RemoveFunc(isNonWord), norm.NFC),
-}
+var DefaultStemmer = &cleaner{}
 
-type cleaner struct {
-	transform transform.Transformer
-}
+type cleaner struct{}
 
 func (c *cleaner) Stem(s string) string {
-	ret, _, err := transform.String(c.transform, strings.ToLower(s))
+	tran := transform.Chain(norm.NFD, transform.RemoveFunc(isNonWord), norm.NFC)
+	ret, _, err := transform.String(tran, strings.ToLower(s))
 	if err != nil {
 		return s
 	}
